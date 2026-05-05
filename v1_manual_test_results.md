@@ -1,13 +1,72 @@
 # Example workflow
-<copy and paste the workflow you had described in the
-early group project assignment that you will first implement>
+Example workflow: Add a new company
+
+I am setting up the performance review system for a company. I want to add the company to the database and then verify that it was added correctly.
+
+POST /companies
+
+I pass in the following information and get the new company object back:
+
+{
+    "name": "HELLO",
+    "industry": "Software",
+    "headquarters_location": "San Luis Obispo, CA",
+    "founded_date": "2026-05-04",
+    "active": true
+}
+
+I can also now get the company by its id.
+
+GET /companies/{company_id}
 
 # Testing results
-<Repeated for each step of the workflow>
-1. The curl statement called. You can find this in the /docs site for your 
-API under each endpoint. For example, for my site the /catalogs/ endpoint 
-curl call looks like:
+
+1. The curl statement called:
+
+```bash
+curl -X 'POST' \
+  #TODO \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "name": "HELLO",
+  "industry": "Software",
+  "headquarters_location": "San Luis Obispo, CA",
+  "founded_date": "2026-05-04",
+  "active": true
+}'
+```
+
+2. The response received:
+
+```json
+{
+  "id": 1,
+  "name": "HELLO",
+  "industry": "Software",
+  "headquarters_location": "San Luis Obispo, CA",
+  "founded_date": "2026-05-04",
+  "active": true
+}
+```
+
+3. The curl statement called:
+
+```bash
 curl -X 'GET' \
-  'https://centralcoastcauldrons.vercel.app/catalog/' \
+  #TODO \
   -H 'accept: application/json'
-2. The response you received in executing the curl statement.
+```
+
+4. The response received:
+
+```json
+{
+  "id": 1,
+  "name": "HELLO",
+  "industry": "Software",
+  "headquarters_location": "San Luis Obispo, CA",
+  "founded_date": "2026-05-04",
+  "active": true
+}
+```

@@ -1,13 +1,18 @@
 import os
 
-import psycopg
-from psycopg.rows import dict_row
+import sqlalchemy
 
 
-def get_connection():
+def get_database_url():
     database_url = os.getenv(
         "POSTGRES_URI",
-        "postgresql://myuser:mypassword@localhost/pr_database",
+        "postgresql+psycopg://myuser:mypassword@localhost/pr_database",
     )
 
-    return psycopg.connect(database_url, row_factory=dict_row)
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    return database_url
+
+
+engine = sqlalchemy.create_engine(get_database_url())
