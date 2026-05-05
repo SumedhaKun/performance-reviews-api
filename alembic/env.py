@@ -15,6 +15,8 @@ config.set_main_option(
     ),
 )
 
+print("POSTGRES_URI:", os.getenv("POSTGRES_URI"))
+
 # Set up logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
