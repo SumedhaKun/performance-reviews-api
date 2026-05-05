@@ -25,7 +25,7 @@ GET /companies/{company_id}
 
 ```bash
 curl -X 'POST' \
-  #TODO \
+  'https://performance-reviews-api.onrender.com/companies' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -41,7 +41,7 @@ curl -X 'POST' \
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "name": "HELLO",
   "industry": "Software",
   "headquarters_location": "San Luis Obispo, CA",
@@ -54,7 +54,7 @@ curl -X 'POST' \
 
 ```bash
 curl -X 'GET' \
-  #TODO \
+  'https://performance-reviews-api.onrender.com/companies/2' \
   -H 'accept: application/json'
 ```
 
@@ -62,7 +62,7 @@ curl -X 'GET' \
 
 ```json
 {
-  "id": 1,
+  "id": 2,
   "name": "HELLO",
   "industry": "Software",
   "headquarters_location": "San Luis Obispo, CA",
