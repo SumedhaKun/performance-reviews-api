@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.routes import companies, employees
+from src.api.routes import comments, companies, employees
 
 
 app = FastAPI()
@@ -12,4 +12,5 @@ def root():
 
 
 app.include_router(companies.router)
+app.include_router(comments.router)
 app.include_router(employees.router)
