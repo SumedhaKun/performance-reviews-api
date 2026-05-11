@@ -25,6 +25,7 @@ class PerformanceReview(BaseModel):
 
 @router.get("/performance_reviews")
 def get_performance_reviews():
+    print("hey")
     with db.engine.begin() as connection:
         performance_reviews = (
             connection.execute(
