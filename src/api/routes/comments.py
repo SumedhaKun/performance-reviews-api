@@ -185,7 +185,7 @@ def create_comment(new_comment: NewComment):
     return format_comment(comment)
 
 
-@router.delete("/comment/{comment_id}", status_code=204)
+@router.delete("/comments/{comment_id}", status_code=204)
 def delete_comment(comment_id: int):
     with db.engine.begin() as connection:
         comment = connection.execute(
