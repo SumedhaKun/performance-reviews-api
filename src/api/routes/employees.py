@@ -32,7 +32,7 @@ class NewEmployee(BaseModel):
     hire_date: str
     current_employee: bool
 
-@router.get("/employees/{employee_id}", tags=["employees"])
+@router.get("/employees/{employee_id}", tags=["employees"], response_model=Employee)
 def get_employee(employee_id: int):
     with db.engine.begin() as connection:
         employee = connection.execute(
@@ -46,15 +46,27 @@ def get_employee(employee_id: int):
                 """
             ),
             {"employee_id": employee_id},
-        ).mappings().one_or_none()
+        ).one_or_none()
 
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    return dict(employee)
+    return Employee(
+        id = employee_id,
+        company_id = employee.company_id,
+        first_name = employee.first_name,
+        last_name = employee.last_name,
+        email = employee.email,
+        phone = employee.phone,
+        title_id = employee.title_id,
+        level = employee.level,
+        department = employee.department,
+        hire_date = str(employee.hire_date),
+        current_employee = employee.current_employee
+    )
 
-@router.get("/employees/", tags=["employees"], response_model=List[Employee])
-def get_employees() -> List[Employee]:
+@router.get("/employees/company/{company_id}", tags=["employees"], response_model=List[Employee])
+def get_employees(company_id: int) -> List[Employee]:
     """
     Retrieves all employees
     """
@@ -64,8 +76,10 @@ def get_employees() -> List[Employee]:
                 """
                 SELECT id, company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
                 FROM employees
+                WHERE company_id = :cid
                 """
-            )
+            ),
+            [{"cid": company_id}]
         )
         all_employees = [
             Employee(
@@ -136,7 +150,6 @@ def delete_employee(employee_id: int):
                 WHERE id = :eid
                 RETURNING
                 company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
-
                 """
             ),
             [{"eid": employee_id}]
