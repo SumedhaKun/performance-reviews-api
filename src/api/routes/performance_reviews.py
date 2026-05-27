@@ -19,8 +19,8 @@ class PerformanceReview(BaseModel):
     category_2: int
     category_3: int
     comment: str
-    title_change: int
-    level_change: int
+    title_change: int = Field(ge=0, le=1)
+    level_change: int = Field(ge=0, le=1)
 
 
 @router.get("/performance_reviews")

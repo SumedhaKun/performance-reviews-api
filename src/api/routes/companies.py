@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 import sqlalchemy
 
@@ -17,6 +17,22 @@ class NewCompany(BaseModel):
     headquarters_location: str
     founded_date: Optional[date] = None
     active: bool = True
+
+
+class DepartmentStats(BaseModel):
+    company_id: int
+    department: str
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    employee_count: int
+    total_reviews: int
+    average_category_1: Optional[float] = None
+    average_category_2: Optional[float] = None
+    average_category_3: Optional[float] = None
+    title_change_count: int
+    title_change_rate: float
+    level_change_count: int
+    level_change_rate: float
 
 
 @router.get("/companies/{company_id}")
@@ -38,6 +54,122 @@ def get_company(company_id: int):
         raise HTTPException(status_code=404, detail="Company not found")
 
     return dict(company)
+
+
+@router.get(
+    "/companies/{company_id}/departments/{department}/stats",
+    response_model=DepartmentStats,
+)
+def get_department_stats(
+    company_id: int,
+    department: str,
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+):
+    with db.engine.begin() as connection:
+        company = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT id, founded_date
+                FROM companies
+                WHERE id = :company_id
+                """
+            ),
+            {"company_id": company_id},
+        ).one_or_none()
+
+        if company is None:
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        earliest_hire_date = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT MIN(hire_date)
+                FROM employees
+                WHERE company_id = :company_id
+                    AND department = :department
+                """
+            ),
+            {
+                "company_id": company_id,
+                "department": department,
+            },
+        ).scalar_one()
+
+        effective_start_date = start_date or company.founded_date or earliest_hire_date
+        effective_end_date = end_date or date.today()
+
+        if (
+            effective_start_date is not None
+            and effective_start_date > effective_end_date
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="start_date must be on or before end_date",
+            )
+
+        stats = connection.execute(
+            sqlalchemy.text(
+                """
+                WITH department_employees AS (
+                    SELECT id
+                    FROM employees
+                    WHERE company_id = :company_id
+                        AND department = :department
+                )
+                SELECT
+                    COUNT(DISTINCT de.id) AS employee_count,
+                    COUNT(pr.id) AS total_reviews,
+                    AVG(pr.category_1) AS average_category_1,
+                    AVG(pr.category_2) AS average_category_2,
+                    AVG(pr.category_3) AS average_category_3,
+                    COUNT(*) FILTER (
+                        WHERE pr.title_change = 1
+                    ) AS title_change_count,
+                    COUNT(*) FILTER (
+                        WHERE pr.level_change = 1
+                    ) AS level_change_count
+                FROM department_employees de
+                LEFT JOIN performance_reviews pr
+                    ON pr.employee_id = de.id
+                    AND (:start_date IS NULL OR pr.review_date >= :start_date)
+                    AND (:end_date IS NULL OR pr.review_date <= :end_date)
+                """
+            ),
+            {
+                "company_id": company_id,
+                "department": department,
+                "start_date": effective_start_date,
+                "end_date": effective_end_date,
+            },
+        ).mappings().one()
+
+    if stats["employee_count"] == 0:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    total_reviews = stats["total_reviews"]
+    title_change_count = stats["title_change_count"]
+    level_change_count = stats["level_change_count"]
+
+    return DepartmentStats(
+        company_id=company_id,
+        department=department,
+        start_date=effective_start_date,
+        end_date=effective_end_date,
+        employee_count=stats["employee_count"],
+        total_reviews=total_reviews,
+        average_category_1=stats["average_category_1"],
+        average_category_2=stats["average_category_2"],
+        average_category_3=stats["average_category_3"],
+        title_change_count=title_change_count,
+        title_change_rate=(
+            title_change_count / total_reviews * 100 
+        ),
+        level_change_count=level_change_count,
+        level_change_rate=(
+            level_change_count / total_reviews * 100 
+        ),
+    )
 
 
 @router.post("/companies", status_code=201)
