@@ -125,3 +125,66 @@ def delete_performance_row(review_id: int):
             """),
             {"review_id": review_id},
         )
+
+from datetime import date
+
+@router.patch("/performance_reviews/{review_id}", status_code=200)
+def patch_performance_review(
+    review_id: int,
+    employee_id: int | None = None,
+    review_period_start: datetime | None = None,
+    review_period_end: datetime | None = None,
+    review_date: datetime | None = None,
+    reviewer_id: int | None = None,
+    overall_rating: int | None = None,
+    category_1: int | None = None,
+    category_2: int | None = None,
+    category_3: int | None = None,
+    comment: str | None = None,
+    title_change: int | None = None,
+    level_change: int | None = None,
+):
+    update_fields = {
+        "employee_id": employee_id,
+        "review_period_start": review_period_start,
+        "review_period_end": review_period_end,
+        "review_date": review_date,
+        "reviewer_id": reviewer_id,
+        "overall_rating": overall_rating,
+        "category_1": category_1,
+        "category_2": category_2,
+        "category_3": category_3,
+        "comment": comment,
+        "title_change": title_change,
+        "level_change": level_change,
+    }
+
+    update_fields = {k: v for k, v in update_fields.items() if v is not None}
+
+    if not update_fields:
+        raise HTTPException(status_code=400, detail="No fields provided for update")
+
+    set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
+
+    query = sqlalchemy.text(f"""
+        UPDATE performance_reviews
+        SET {set_clause}
+        WHERE id = :review_id
+        RETURNING id, employee_id, review_period_start, review_period_end,
+            review_date, reviewer_id, overall_rating, category_1, category_2,
+            category_3, comment, title_change, level_change
+    """)
+
+    update_fields["review_id"] = review_id
+
+    with db.engine.begin() as connection:
+        updated_review = (
+            connection.execute(query, update_fields)
+            .mappings()
+            .one_or_none()
+        )
+
+    if updated_review is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    return dict(updated_review)
