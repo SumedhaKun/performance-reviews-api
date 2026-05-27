@@ -175,3 +175,59 @@ Response Body:
 DELETE /comments/{comment_id}
 
 	<No Response>
+
+
+###complex endpoints
+
+12. GET /employees/{employee_id}/stats
+optional query parameters:
+start_date: Date
+end_date: Date
+
+If start_date is not provided, it defaults to the employee's hire_date.
+If end_date is not provided, it defaults to today's date.
+
+Response:
+{
+  "employee_id": id,
+  "company_id": id,
+  "first_name": string,
+  "last_name": string,
+  "department": string,
+  "start_date": Date,
+  "end_date": Date,
+  "total_reviews": int,
+  "average_category_1": float,
+  "average_category_2": float,
+  "average_category_3": float,
+  "title_change_count": int,
+  "title_change_rate": float,
+  "level_change_count": int,
+  "level_change_rate": float
+}
+
+13. GET /companies/{company_id}/departments/{department}/stats
+Optional query parameters:
+start_date: Date
+end_date: Date
+
+If start_date is not provided, it defaults to the company's founded_date. If
+the company has no founded_date, it defaults to the earliest hire_date in that
+department. If end_date is not provided, it defaults to today's date.
+
+Response:
+{
+  "company_id": id,
+  "department": string,
+  "start_date": Date,
+  "end_date": Date,
+  "employee_count": int,
+  "total_reviews": int,
+  "average_category_1": float,
+  "average_category_2": float,
+  "average_category_3": float,
+  "title_change_count": int,
+  "title_change_rate": float,
+  "level_change_count": int,
+  "level_change_rate": float
+}
