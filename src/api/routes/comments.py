@@ -27,7 +27,7 @@ def format_comment(comment):
 
 
 router = APIRouter(
-    prefix="/comment",
+    prefix="/comments",
     tags=["comments"],
     dependencies=[Depends(auth.get_api_key)],
 )

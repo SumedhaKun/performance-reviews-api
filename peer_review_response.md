@@ -8,3 +8,9 @@
 - Implement authentication middleware
 - Validate foreign keys (company id and title id) before inserts in employees.py
 - Standardize delete behavior across routes
+- Delete PRs and comments associated to an employee when the employee is deleted
+- Route prefixes to plural names
+- Standardize direct row returns to mappings
+- Validate overall rating range in performance reviews
+- Change employee phone numbers to validated strings
+- Use date consistently across employee, company, and review date fields
