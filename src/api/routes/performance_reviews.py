@@ -120,6 +120,20 @@ def create_performance_review(performance_review: PerformanceReview):
 @router.delete("/{review_id}", status_code=204)
 def delete_performance_row(review_id: int):
     with db.engine.begin() as connection:
+        review_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM performance_reviews
+                WHERE id = :review_id
+                """
+            ),
+            {"review_id": review_id},
+        ).one_or_none()
+
+        if review_exists is None:
+            raise HTTPException(status_code=404, detail="Review not found")
+
         connection.execute(
             sqlalchemy.text("""
                 DELETE FROM performance_reviews

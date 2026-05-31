@@ -79,22 +79,29 @@ def add_title(new_title: NewTitle):
     return Title(id=new_id, name=new_title.name)
 
 
-@router.delete("/{title_id}/", response_model=Title)
+@router.delete("/{title_id}/", status_code=204)
 def delete_title(title_id: int):
     with db.engine.begin() as connection:
-        deleted = connection.execute(
+        title_exists = connection.execute(
             sqlalchemy.text(
                 """
-                DELETE FROM titles
+                SELECT 1
+                FROM titles
                 WHERE id = :title_id
-                RETURNING
-                name
                 """
             ),
             {"title_id": title_id},
         ).one_or_none()
 
-    if deleted is None:
-        raise HTTPException(status_code=404, detail="Title not found")
+        if title_exists is None:
+            raise HTTPException(status_code=404, detail="Title not found")
 
-    return Title(id=title_id, name=deleted.name)
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM titles
+                WHERE id = :title_id
+                """
+            ),
+            {"title_id": title_id},
+        )

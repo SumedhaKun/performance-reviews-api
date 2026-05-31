@@ -225,6 +225,34 @@ def get_employees(company_id: int) -> List[Employee]:
 @router.post("/", response_model=Employee)
 def add_employee(new_employee: NewEmployee):
     with db.engine.begin() as connection:
+        company_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM companies
+                WHERE id = :company_id
+                """
+            ),
+            {"company_id": new_employee.company_id},
+        ).one_or_none()
+
+        if company_exists is None:
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        title_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM titles
+                WHERE id = :title_id
+                """
+            ),
+            {"title_id": new_employee.title_id},
+        ).one_or_none()
+
+        if title_exists is None:
+            raise HTTPException(status_code=404, detail="Title not found")
+
         new_id = connection.execute(
             sqlalchemy.text(
                 """
@@ -264,34 +292,29 @@ def add_employee(new_employee: NewEmployee):
     )
 
 
-@router.delete("/{employee_id}/", response_model=Employee)
+@router.delete("/{employee_id}/", status_code=204)
 def delete_employee(employee_id: int):
     with db.engine.begin() as connection:
-        deleted = connection.execute(
+        employee_exists = connection.execute(
             sqlalchemy.text(
                 """
-                DELETE FROM employees
+                SELECT 1
+                FROM employees
                 WHERE id = :employee_id
-                RETURNING
-                company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
                 """
             ),
             {"employee_id": employee_id},
         ).one_or_none()
 
-    if deleted is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        if employee_exists is None:
+            raise HTTPException(status_code=404, detail="Employee not found")
 
-    return Employee(
-        id=employee_id,
-        company_id=deleted.company_id,
-        first_name=deleted.first_name,
-        last_name=deleted.last_name,
-        email=deleted.email,
-        phone=deleted.phone,
-        title_id=deleted.title_id,
-        level=deleted.level,
-        department=deleted.department,
-        hire_date=str(deleted.hire_date),
-        current_employee=deleted.current_employee,
-    )
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM employees
+                WHERE id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
