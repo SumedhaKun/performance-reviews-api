@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from datetime import datetime
 import sqlalchemy
 
@@ -25,7 +25,6 @@ class PerformanceReview(BaseModel):
 
 @router.get("/performance_reviews")
 def get_performance_reviews():
-    print("hey")
     with db.engine.begin() as connection:
         performance_reviews = (
             connection.execute(
@@ -126,7 +125,9 @@ def delete_performance_row(review_id: int):
             {"review_id": review_id},
         )
 
+
 from datetime import date
+
 
 @router.patch("/performance_reviews/{review_id}", status_code=200)
 def patch_performance_review(
@@ -179,9 +180,7 @@ def patch_performance_review(
 
     with db.engine.begin() as connection:
         updated_review = (
-            connection.execute(query, update_fields)
-            .mappings()
-            .one_or_none()
+            connection.execute(query, update_fields).mappings().one_or_none()
         )
 
     if updated_review is None:

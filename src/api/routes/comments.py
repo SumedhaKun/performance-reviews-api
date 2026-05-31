@@ -84,17 +84,21 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
                     detail=f"Employee {employeeId} not found",
                 )
 
-        comments = connection.execute(
-            sqlalchemy.text(
-                f"""
+        comments = (
+            connection.execute(
+                sqlalchemy.text(
+                    f"""
                 SELECT id, employee_id, subject, commenter_id, content, created_at
                 FROM comments
                 WHERE {" AND ".join(filters)}
                 ORDER BY created_at DESC, id DESC
                 """
-            ),
-            params,
-        ).mappings().all()
+                ),
+                params,
+            )
+            .mappings()
+            .all()
+        )
 
     return [format_comment(comment) for comment in comments]
 
@@ -102,16 +106,20 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
 @router.get("/comment/{comment_id}")
 def get_comment(comment_id: int):
     with db.engine.begin() as connection:
-        comment = connection.execute(
-            sqlalchemy.text(
-                """
+        comment = (
+            connection.execute(
+                sqlalchemy.text(
+                    """
                 SELECT id, employee_id, subject, commenter_id, content, created_at
                 FROM comments
                 WHERE id = :comment_id
                 """
-            ),
-            {"comment_id": comment_id},
-        ).mappings().one_or_none()
+                ),
+                {"comment_id": comment_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
 
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
@@ -156,9 +164,10 @@ def create_comment(new_comment: NewComment):
                 detail=f"Author employee {new_comment.authorId} not found",
             )
 
-        comment = connection.execute(
-            sqlalchemy.text(
-                """
+        comment = (
+            connection.execute(
+                sqlalchemy.text(
+                    """
                 INSERT INTO comments (
                     employee_id,
                     subject,
@@ -173,14 +182,17 @@ def create_comment(new_comment: NewComment):
                 )
                 RETURNING id, employee_id, subject, commenter_id, content, created_at
                 """
-            ),
-            {
-                "employee_id": new_comment.employeeId,
-                "subject": new_comment.subject,
-                "author_id": new_comment.authorId,
-                "content": new_comment.comment,
-            },
-        ).mappings().one()
+                ),
+                {
+                    "employee_id": new_comment.employeeId,
+                    "subject": new_comment.subject,
+                    "author_id": new_comment.authorId,
+                    "content": new_comment.comment,
+                },
+            )
+            .mappings()
+            .one()
+        )
 
     return format_comment(comment)
 
