@@ -5,8 +5,6 @@ import sqlalchemy
 from src.api.routes import auth
 from src.api import db
 
-router = APIRouter()
-
 
 class PerformanceReview(BaseModel):
     employee_id: int
@@ -129,9 +127,6 @@ def delete_performance_row(review_id: int):
             """),
             {"review_id": review_id},
         )
-
-
-from datetime import date
 
 
 @router.patch("/{review_id}", status_code=200)

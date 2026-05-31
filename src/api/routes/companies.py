@@ -9,9 +9,6 @@ from src.api import db
 from src.api.routes import auth
 
 
-router = APIRouter()
-
-
 class NewCompany(BaseModel):
     name: str
     industry: str

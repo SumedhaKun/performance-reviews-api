@@ -6,8 +6,6 @@ from typing import List
 from src.api import db
 from src.api.routes import auth
 
-router = APIRouter()
-
 
 class Title(BaseModel):
     id: int
@@ -32,10 +30,10 @@ def get_tag(title_id: int):
                 """
                 SELECT id, name
                 FROM titles
-                WHERE id = :tid
+                WHERE id = :title_id
                 """
             ),
-            {"tid": title_id},
+            {"title_id": title_id},
         ).one_or_none()
 
     if title is None:
@@ -88,12 +86,12 @@ def delete_title(title_id: int):
             sqlalchemy.text(
                 """
                 DELETE FROM titles
-                WHERE id = :tid
+                WHERE id = :title_id
                 RETURNING
                 name
                 """
             ),
-            {"tid": title_id},
+            {"title_id": title_id},
         ).one_or_none()
 
     if deleted is None:

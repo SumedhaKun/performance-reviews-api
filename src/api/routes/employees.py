@@ -8,8 +8,6 @@ from pydantic import BaseModel
 from src.api import db
 from src.api.routes import auth
 
-router = APIRouter()
-
 
 class Employee(BaseModel):
     id: int
@@ -200,10 +198,10 @@ def get_employees(company_id: int) -> List[Employee]:
                 """
                 SELECT id, company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
                 FROM employees
-                WHERE company_id = :cid
+                WHERE company_id = :company_id
                 """
             ),
-            [{"cid": company_id}],
+            {"company_id": company_id},
         )
         all_employees = [
             Employee(
@@ -237,20 +235,18 @@ def add_employee(new_employee: NewEmployee):
                 RETURNING id
                 """
             ),
-            [
-                {
-                    "company_id": new_employee.company_id,
-                    "first_name": new_employee.first_name,
-                    "last_name": new_employee.last_name,
-                    "phone": new_employee.phone,
-                    "email": new_employee.email,
-                    "title_id": new_employee.title_id,
-                    "level": new_employee.level,
-                    "department": new_employee.department,
-                    "hire_date": new_employee.hire_date,
-                    "current_employee": new_employee.current_employee,
-                }
-            ],
+            {
+                "company_id": new_employee.company_id,
+                "first_name": new_employee.first_name,
+                "last_name": new_employee.last_name,
+                "phone": new_employee.phone,
+                "email": new_employee.email,
+                "title_id": new_employee.title_id,
+                "level": new_employee.level,
+                "department": new_employee.department,
+                "hire_date": new_employee.hire_date,
+                "current_employee": new_employee.current_employee,
+            },
         ).scalar_one()
 
     return Employee(
@@ -275,12 +271,12 @@ def delete_employee(employee_id: int):
             sqlalchemy.text(
                 """
                 DELETE FROM employees
-                WHERE id = :eid
+                WHERE id = :employee_id
                 RETURNING
                 company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
                 """
             ),
-            {"eid": employee_id},
+            {"employee_id": employee_id},
         ).one_or_none()
 
     if deleted is None:

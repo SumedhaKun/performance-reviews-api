@@ -8,9 +8,6 @@ import sqlalchemy
 from src.api import db
 
 
-router = APIRouter()
-
-
 class NewComment(BaseModel):
     employeeId: int
     subject: str
@@ -27,6 +24,7 @@ def format_comment(comment):
         "authorId": comment["commenter_id"],
         "createdAt": comment["created_at"],
     }
+
 
 router = APIRouter(
     prefix="/comment",
