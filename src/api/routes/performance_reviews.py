@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime
 import sqlalchemy
-
+from src.api.routes import auth
 from src.api import db
 
 router = APIRouter()
@@ -22,8 +22,13 @@ class PerformanceReview(BaseModel):
     title_change: int = Field(ge=0, le=1)
     level_change: int = Field(ge=0, le=1)
 
+router = APIRouter(
+    prefix="/performance_review",
+    tags=["performance_reviews"],
+    dependencies=[Depends(auth.get_api_key)],
+)
 
-@router.get("/performance_reviews")
+@router.get("/")
 def get_performance_reviews():
     with db.engine.begin() as connection:
         performance_reviews = (
@@ -44,7 +49,7 @@ def get_performance_reviews():
     return performance_reviews
 
 
-@router.get("/performance_reviews/{review_id}")
+@router.get("/{review_id}")
 def get_performance_review(review_id: int):
     with db.engine.begin() as connection:
         performance_review = (
@@ -70,7 +75,7 @@ def get_performance_review(review_id: int):
     return dict(performance_review)
 
 
-@router.post("/performance_reviews", status_code=201)
+@router.post("/", status_code=201)
 def create_performance_review(performance_review: PerformanceReview):
     with db.engine.begin() as connection:
         performance_review = (
@@ -114,7 +119,7 @@ def create_performance_review(performance_review: PerformanceReview):
     return dict(performance_review)
 
 
-@router.delete("/performance_reviews/{review_id}", status_code=204)
+@router.delete("/{review_id}", status_code=204)
 def delete_performance_row(review_id: int):
     with db.engine.begin() as connection:
         connection.execute(
@@ -129,7 +134,7 @@ def delete_performance_row(review_id: int):
 from datetime import date
 
 
-@router.patch("/performance_reviews/{review_id}", status_code=200)
+@router.patch("/{review_id}", status_code=200)
 def patch_performance_review(
     review_id: int,
     employee_id: int | None = None,

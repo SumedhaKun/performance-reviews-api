@@ -1,11 +1,12 @@
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 import sqlalchemy
 from pydantic import BaseModel
 
 from src.api import db
+from src.api.routes import auth
 
 router = APIRouter()
 
@@ -55,7 +56,13 @@ class EmployeeStats(BaseModel):
     level_change_rate: float
 
 
-@router.get("/employees/{employee_id}", tags=["employees"], response_model=Employee)
+router = APIRouter(
+    prefix="/employee",
+    tags=["employees"],
+    dependencies=[Depends(auth.get_api_key)],
+)
+
+@router.get("/{employee_id}", response_model=Employee)
 def get_employee(employee_id: int):
     with db.engine.begin() as connection:
         employee = connection.execute(
@@ -90,8 +97,7 @@ def get_employee(employee_id: int):
 
 
 @router.get(
-    "/employees/{employee_id}/stats",
-    tags=["employees"],
+    "/{employee_id}/stats",
     response_model=EmployeeStats,
 )
 def get_employee_stats(
@@ -182,7 +188,7 @@ def get_employee_stats(
 
 
 @router.get(
-    "/employees/company/{company_id}", tags=["employees"], response_model=List[Employee]
+    "/company/{company_id}", response_model=List[Employee]
 )
 def get_employees(company_id: int) -> List[Employee]:
     """
@@ -218,7 +224,7 @@ def get_employees(company_id: int) -> List[Employee]:
     return all_employees
 
 
-@router.post("/employees/", tags=["employees"], response_model=Employee)
+@router.post("/", response_model=Employee)
 def add_employee(new_employee: NewEmployee):
     with db.engine.begin() as connection:
         new_id = connection.execute(
@@ -262,7 +268,7 @@ def add_employee(new_employee: NewEmployee):
     )
 
 
-@router.delete("/employees/{employee_id}/", tags=["employees"], response_model=Employee)
+@router.delete("/{employee_id}/", response_model=Employee)
 def delete_employee(employee_id: int):
     with db.engine.begin() as connection:
         deleted = connection.execute(

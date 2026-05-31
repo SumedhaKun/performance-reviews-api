@@ -1,11 +1,12 @@
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 import sqlalchemy
 
 from src.api import db
+from src.api.routes import auth
 
 
 router = APIRouter()
@@ -34,8 +35,14 @@ class DepartmentStats(BaseModel):
     level_change_count: int
     level_change_rate: float
 
+router = APIRouter(
+    prefix="/company",
+    tags=["companies"],
+    dependencies=[Depends(auth.get_api_key)],
+)
 
-@router.get("/companies/{company_id}")
+
+@router.get("/{company_id}")
 def get_company(company_id: int):
     with db.engine.begin() as connection:
         company = (
@@ -61,7 +68,7 @@ def get_company(company_id: int):
 
 
 @router.get(
-    "/companies/{company_id}/departments/{department}/stats",
+    "/{company_id}/departments/{department}/stats",
     response_model=DepartmentStats,
 )
 def get_department_stats(
@@ -176,7 +183,7 @@ def get_department_stats(
     )
 
 
-@router.post("/companies", status_code=201)
+@router.post("/", status_code=201)
 def create_company(new_company: NewCompany):
     with db.engine.begin() as connection:
         company = (

@@ -1,7 +1,8 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from src.api.routes import auth
 import sqlalchemy
 
 from src.api import db
@@ -27,8 +28,14 @@ def format_comment(comment):
         "createdAt": comment["created_at"],
     }
 
+router = APIRouter(
+    prefix="/comment",
+    tags=["comments"],
+    dependencies=[Depends(auth.get_api_key)],
+)
 
-@router.get("/comment/")
+
+@router.get("/")
 def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
     if authorId is None and employeeId is None:
         raise HTTPException(
@@ -103,7 +110,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
     return [format_comment(comment) for comment in comments]
 
 
-@router.get("/comment/{comment_id}")
+@router.get("/{comment_id}")
 def get_comment(comment_id: int):
     with db.engine.begin() as connection:
         comment = (
@@ -127,7 +134,7 @@ def get_comment(comment_id: int):
     return format_comment(comment)
 
 
-@router.post("/comment/", status_code=201)
+@router.post("/", status_code=201)
 def create_comment(new_comment: NewComment):
     with db.engine.begin() as connection:
         employee_exists = connection.execute(
@@ -197,7 +204,7 @@ def create_comment(new_comment: NewComment):
     return format_comment(comment)
 
 
-@router.delete("/comment/{comment_id}", status_code=204)
+@router.delete("/{comment_id}", status_code=204)
 def delete_comment(comment_id: int):
     with db.engine.begin() as connection:
         comment = connection.execute(
