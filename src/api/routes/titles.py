@@ -7,12 +7,15 @@ from src.api import db
 
 router = APIRouter()
 
+
 class Title(BaseModel):
     id: int
     name: str
 
+
 class NewTitle(BaseModel):
     name: str
+
 
 @router.get("/titles/{title_id}", tags=["titles"])
 def get_tag(title_id: int):
@@ -31,7 +34,8 @@ def get_tag(title_id: int):
     if title is None:
         raise HTTPException(status_code=404, detail="Title not found")
 
-    return Title(id = title.id, name = title.name)
+    return Title(id=title.id, name=title.name)
+
 
 @router.get("/titles/", tags=["titles"], response_model=List[Title])
 def get_titles() -> List[Title]:
@@ -47,14 +51,9 @@ def get_titles() -> List[Title]:
                 """
             )
         )
-        all_titles = [
-            Title(
-                id = t.id,
-                name = t.name
-            )
-            for t in titles
-        ]
+        all_titles = [Title(id=t.id, name=t.name) for t in titles]
     return all_titles
+
 
 @router.post("/titles/", tags=["titles"], response_model=Title)
 def add_title(new_title: NewTitle):
@@ -69,15 +68,11 @@ def add_title(new_title: NewTitle):
                 RETURNING id
                 """
             ),
-            [{
-                "name": new_title.name
-            }]
+            {"name": new_title.name},
         ).scalar_one()
 
-    return Title(
-        id = new_id,
-        name = new_title.name
-    )
+    return Title(id=new_id, name=new_title.name)
+
 
 @router.delete("/title/{title_id}/", tags=["titles"], response_model=Title)
 def delete_title(title_id: int):
@@ -91,13 +86,10 @@ def delete_title(title_id: int):
                 name
                 """
             ),
-            [{"tid": title_id}]
+            {"tid": title_id},
         ).one_or_none()
-    
+
     if deleted is None:
         raise HTTPException(status_code=404, detail="Title not found")
-    
-    return Title(
-        id = title_id,
-        name = deleted.name
-    )
+
+    return Title(id=title_id, name=deleted.name)

@@ -38,17 +38,21 @@ class DepartmentStats(BaseModel):
 @router.get("/companies/{company_id}")
 def get_company(company_id: int):
     with db.engine.begin() as connection:
-        company = connection.execute(
-            sqlalchemy.text(
-                """
+        company = (
+            connection.execute(
+                sqlalchemy.text(
+                    """
                 SELECT id, name, industry,
                     headquarters_location, founded_date, active
                 FROM companies
                 WHERE id = :company_id
                 """
-            ),
-            {"company_id": company_id},
-        ).mappings().one_or_none()
+                ),
+                {"company_id": company_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
 
     if company is None:
         raise HTTPException(status_code=404, detail="Company not found")
@@ -108,9 +112,10 @@ def get_department_stats(
                 detail="start_date must be on or before end_date",
             )
 
-        stats = connection.execute(
-            sqlalchemy.text(
-                """
+        stats = (
+            connection.execute(
+                sqlalchemy.text(
+                    """
                 WITH department_employees AS (
                     SELECT id
                     FROM employees
@@ -135,14 +140,17 @@ def get_department_stats(
                     AND (:start_date IS NULL OR pr.review_date >= :start_date)
                     AND (:end_date IS NULL OR pr.review_date <= :end_date)
                 """
-            ),
-            {
-                "company_id": company_id,
-                "department": department,
-                "start_date": effective_start_date,
-                "end_date": effective_end_date,
-            },
-        ).mappings().one()
+                ),
+                {
+                    "company_id": company_id,
+                    "department": department,
+                    "start_date": effective_start_date,
+                    "end_date": effective_end_date,
+                },
+            )
+            .mappings()
+            .one()
+        )
 
     if stats["employee_count"] == 0:
         raise HTTPException(status_code=404, detail="Department not found")
@@ -162,22 +170,19 @@ def get_department_stats(
         average_category_2=stats["average_category_2"],
         average_category_3=stats["average_category_3"],
         title_change_count=title_change_count,
-        title_change_rate=(
-            title_change_count / total_reviews * 100 
-        ),
+        title_change_rate=(title_change_count / total_reviews * 100),
         level_change_count=level_change_count,
-        level_change_rate=(
-            level_change_count / total_reviews * 100 
-        ),
+        level_change_rate=(level_change_count / total_reviews * 100),
     )
 
 
 @router.post("/companies", status_code=201)
 def create_company(new_company: NewCompany):
     with db.engine.begin() as connection:
-        company = connection.execute(
-            sqlalchemy.text(
-                """
+        company = (
+            connection.execute(
+                sqlalchemy.text(
+                    """
                 INSERT INTO companies (
                     name,
                     industry,
@@ -195,14 +200,17 @@ def create_company(new_company: NewCompany):
                 RETURNING id, name, industry,
                     headquarters_location, founded_date, active
                 """
-            ),
-            {
-                "name": new_company.name,
-                "industry": new_company.industry,
-                "headquarters_location": new_company.headquarters_location,
-                "founded_date": new_company.founded_date,
-                "active": new_company.active,
-            },
-        ).mappings().one()
+                ),
+                {
+                    "name": new_company.name,
+                    "industry": new_company.industry,
+                    "headquarters_location": new_company.headquarters_location,
+                    "founded_date": new_company.founded_date,
+                    "active": new_company.active,
+                },
+            )
+            .mappings()
+            .one()
+        )
 
     return dict(company)
