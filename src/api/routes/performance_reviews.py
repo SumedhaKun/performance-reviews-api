@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import date
 import sqlalchemy
 from src.api.routes import auth
 from src.api import db
@@ -8,11 +8,11 @@ from src.api import db
 
 class PerformanceReview(BaseModel):
     employee_id: int
-    review_period_start: datetime
-    review_period_end: datetime
-    review_date: datetime
+    review_period_start: date
+    review_period_end: date
+    review_date: date
     reviewer_id: int
-    overall_rating: int
+    overall_rating: int = Field(ge=1, le=5)
     category_1: int
     category_2: int
     category_3: int
@@ -21,7 +21,7 @@ class PerformanceReview(BaseModel):
     level_change: int = Field(ge=0, le=1)
 
 router = APIRouter(
-    prefix="/performance_review",
+    prefix="/performance_reviews",
     tags=["performance_reviews"],
     dependencies=[Depends(auth.get_api_key)],
 )
@@ -120,6 +120,20 @@ def create_performance_review(performance_review: PerformanceReview):
 @router.delete("/{review_id}", status_code=204)
 def delete_performance_row(review_id: int):
     with db.engine.begin() as connection:
+        review_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM performance_reviews
+                WHERE id = :review_id
+                """
+            ),
+            {"review_id": review_id},
+        ).one_or_none()
+
+        if review_exists is None:
+            raise HTTPException(status_code=404, detail="Review not found")
+
         connection.execute(
             sqlalchemy.text("""
                 DELETE FROM performance_reviews
@@ -133,11 +147,11 @@ def delete_performance_row(review_id: int):
 def patch_performance_review(
     review_id: int,
     employee_id: int | None = None,
-    review_period_start: datetime | None = None,
-    review_period_end: datetime | None = None,
-    review_date: datetime | None = None,
+    review_period_start: date | None = None,
+    review_period_end: date | None = None,
+    review_date: date | None = None,
     reviewer_id: int | None = None,
-    overall_rating: int | None = None,
+    overall_rating: int | None = Query(default=None, ge=1, le=5),
     category_1: int | None = None,
     category_2: int | None = None,
     category_3: int | None = None,

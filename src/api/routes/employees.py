@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Depends
 import sqlalchemy
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.api import db
 from src.api.routes import auth
@@ -15,11 +15,11 @@ class Employee(BaseModel):
     first_name: str
     last_name: str
     email: str
-    phone: int
+    phone: str = Field(min_length=10, max_length=10)
     title_id: int
     level: int  # should probably make this annotated
     department: str
-    hire_date: str
+    hire_date: date
     current_employee: bool
 
 
@@ -28,11 +28,11 @@ class NewEmployee(BaseModel):
     first_name: str
     last_name: str
     email: str
-    phone: int
+    phone: str = Field(min_length=10, max_length=10)
     title_id: int
     level: int  # should probably make this annotated
     department: str
-    hire_date: str
+    hire_date: date
     current_employee: bool
 
 
@@ -55,7 +55,7 @@ class EmployeeStats(BaseModel):
 
 
 router = APIRouter(
-    prefix="/employee",
+    prefix="/employees",
     tags=["employees"],
     dependencies=[Depends(auth.get_api_key)],
 )
@@ -74,24 +74,12 @@ def get_employee(employee_id: int):
                 """
             ),
             {"employee_id": employee_id},
-        ).one_or_none()
+        ).mappings().one_or_none()
 
     if employee is None:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    return Employee(
-        id=employee_id,
-        company_id=employee.company_id,
-        first_name=employee.first_name,
-        last_name=employee.last_name,
-        email=employee.email,
-        phone=employee.phone,
-        title_id=employee.title_id,
-        level=employee.level,
-        department=employee.department,
-        hire_date=str(employee.hire_date),
-        current_employee=employee.current_employee,
-    )
+    return dict(employee)
 
 
 @router.get(
@@ -114,12 +102,12 @@ def get_employee_stats(
                 """
             ),
             {"employee_id": employee_id},
-        ).one_or_none()
+        ).mappings().one_or_none()
 
         if employee is None:
             raise HTTPException(status_code=404, detail="Employee not found")
 
-        effective_start_date = start_date or employee.hire_date
+        effective_start_date = start_date or employee["hire_date"]
         effective_end_date = end_date or date.today()
 
         if (
@@ -167,11 +155,11 @@ def get_employee_stats(
     level_change_count = stats["level_change_count"]
 
     return EmployeeStats(
-        employee_id=employee.id,
-        company_id=employee.company_id,
-        first_name=employee.first_name,
-        last_name=employee.last_name,
-        department=employee.department,
+        employee_id=employee["id"],
+        company_id=employee["company_id"],
+        first_name=employee["first_name"],
+        last_name=employee["last_name"],
+        department=employee["department"],
         start_date=effective_start_date,
         end_date=effective_end_date,
         total_reviews=total_reviews,
@@ -202,37 +190,54 @@ def get_employees(company_id: int) -> List[Employee]:
                 """
             ),
             {"company_id": company_id},
-        )
+        ).mappings().all()
         all_employees = [
-            Employee(
-                id=e.id,
-                company_id=e.company_id,
-                first_name=e.first_name,
-                last_name=e.last_name,
-                email=e.email,
-                phone=e.phone,
-                title_id=e.title_id,
-                level=e.level,
-                department=e.department,
-                hire_date=str(e.hire_date),
-                current_employee=e.current_employee,
-            )
-            for e in employees
-        ]
+            dict(employee)
+                    for e in employees
+                ]
     return all_employees
 
 
 @router.post("/", response_model=Employee)
 def add_employee(new_employee: NewEmployee):
     with db.engine.begin() as connection:
-        new_id = connection.execute(
+        company_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM companies
+                WHERE id = :company_id
+                """
+            ),
+            {"company_id": new_employee.company_id},
+        ).one_or_none()
+
+        if company_exists is None:
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        title_exists = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM titles
+                WHERE id = :title_id
+                """
+            ),
+            {"title_id": new_employee.title_id},
+        ).one_or_none()
+
+        if title_exists is None:
+            raise HTTPException(status_code=404, detail="Title not found")
+
+        employee = connection.execute(
             sqlalchemy.text(
                 """
                 INSERT INTO employees
                 (company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee)
                 VALUES
                 (:company_id, :first_name, :last_name, :email, :phone, :title_id, :level, :department, :hire_date, :current_employee)
-                RETURNING id
+                RETURNING id, company_id, first_name, last_name, email, phone,
+                    title_id, level, department, hire_date, current_employee
                 """
             ),
             {
@@ -247,51 +252,56 @@ def add_employee(new_employee: NewEmployee):
                 "hire_date": new_employee.hire_date,
                 "current_employee": new_employee.current_employee,
             },
-        ).scalar_one()
+        ).mappings().one()
 
-    return Employee(
-        id=new_id,
-        company_id=new_employee.company_id,
-        first_name=new_employee.first_name,
-        last_name=new_employee.last_name,
-        email=new_employee.email,
-        phone=new_employee.phone,
-        title_id=new_employee.title_id,
-        level=new_employee.level,
-        department=new_employee.department,
-        hire_date=new_employee.hire_date,
-        current_employee=new_employee.current_employee,
-    )
+    return dict(employee)
 
 
-@router.delete("/{employee_id}/", response_model=Employee)
+@router.delete("/{employee_id}/", status_code=204)
 def delete_employee(employee_id: int):
     with db.engine.begin() as connection:
-        deleted = connection.execute(
+        employee_exists = connection.execute(
             sqlalchemy.text(
                 """
-                DELETE FROM employees
+                SELECT 1
+                FROM employees
                 WHERE id = :employee_id
-                RETURNING
-                company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
                 """
             ),
             {"employee_id": employee_id},
         ).one_or_none()
 
-    if deleted is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        if employee_exists is None:
+            raise HTTPException(status_code=404, detail="Employee not found")
 
-    return Employee(
-        id=employee_id,
-        company_id=deleted.company_id,
-        first_name=deleted.first_name,
-        last_name=deleted.last_name,
-        email=deleted.email,
-        phone=deleted.phone,
-        title_id=deleted.title_id,
-        level=deleted.level,
-        department=deleted.department,
-        hire_date=str(deleted.hire_date),
-        current_employee=deleted.current_employee,
-    )
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM comments
+                WHERE employee_id = :employee_id
+                    OR commenter_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM performance_reviews
+                WHERE employee_id = :employee_id
+                    OR reviewer_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM employees
+                WHERE id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )

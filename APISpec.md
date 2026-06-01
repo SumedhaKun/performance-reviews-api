@@ -148,7 +148,7 @@ comments
 		“createdAt”: Date
 }
 
-10. GET /comment/
+10. GET /comments/
 Parameters (at least 1 is required):
 authorId: id
 employeeId: id 
@@ -162,7 +162,7 @@ Response:
 		“createdAt”: Date
 }]
 
-11. GET /comment/{comment_id}
+11. GET /comments/{comment_id}
 Response Body:
 {
 	“id”: int,

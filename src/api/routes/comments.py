@@ -27,7 +27,7 @@ def format_comment(comment):
 
 
 router = APIRouter(
-    prefix="/comment",
+    prefix="/comments",
     tags=["comments"],
     dependencies=[Depends(auth.get_api_key)],
 )
@@ -205,16 +205,26 @@ def create_comment(new_comment: NewComment):
 @router.delete("/{comment_id}", status_code=204)
 def delete_comment(comment_id: int):
     with db.engine.begin() as connection:
-        comment = connection.execute(
+        comment_exists = connection.execute(
             sqlalchemy.text(
                 """
-                DELETE FROM comments
+                SELECT 1
+                FROM comments
                 WHERE id = :comment_id
-                RETURNING id
                 """
             ),
             {"comment_id": comment_id},
         ).one_or_none()
 
-    if comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        if comment_exists is None:
+            raise HTTPException(status_code=404, detail="Comment not found")
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM comments
+                WHERE id = :comment_id
+                """
+            ),
+            {"comment_id": comment_id},
+        )

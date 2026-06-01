@@ -33,7 +33,7 @@ class DepartmentStats(BaseModel):
     level_change_rate: float
 
 router = APIRouter(
-    prefix="/company",
+    prefix="/companies",
     tags=["companies"],
     dependencies=[Depends(auth.get_api_key)],
 )

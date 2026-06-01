@@ -16,7 +16,7 @@ class NewTitle(BaseModel):
     name: str
 
 router = APIRouter(
-    prefix="/title",
+    prefix="/titles",
     tags=["titles"],
     dependencies=[Depends(auth.get_api_key)],
 )
@@ -34,12 +34,12 @@ def get_tag(title_id: int):
                 """
             ),
             {"title_id": title_id},
-        ).one_or_none()
+        ).mappings().one_or_none()
 
     if title is None:
         raise HTTPException(status_code=404, detail="Title not found")
 
-    return Title(id=title.id, name=title.name)
+    return dict(title)
 
 
 @router.get("/", response_model=List[Title])
@@ -55,46 +55,53 @@ def get_titles() -> List[Title]:
                 FROM titles
                 """
             )
-        )
-        all_titles = [Title(id=t.id, name=t.name) for t in titles]
+        ).mappings().all()
+        all_titles = [dict(title) for t in titles]
     return all_titles
 
 
 @router.post("/", response_model=Title)
 def add_title(new_title: NewTitle):
     with db.engine.begin() as connection:
-        new_id = connection.execute(
+        title = connection.execute(
             sqlalchemy.text(
                 """
                 INSERT INTO titles
                 (name)
                 VALUES
                 (:name)
-                RETURNING id
+                RETURNING id, name
                 """
             ),
             {"name": new_title.name},
-        ).scalar_one()
+        ).mappings().one()
 
-    return Title(id=new_id, name=new_title.name)
+    return dict(title)
 
 
-@router.delete("/{title_id}/", response_model=Title)
+@router.delete("/{title_id}/", status_code=204)
 def delete_title(title_id: int):
     with db.engine.begin() as connection:
-        deleted = connection.execute(
+        title_exists = connection.execute(
             sqlalchemy.text(
                 """
-                DELETE FROM titles
+                SELECT 1
+                FROM titles
                 WHERE id = :title_id
-                RETURNING
-                name
                 """
             ),
             {"title_id": title_id},
         ).one_or_none()
 
-    if deleted is None:
-        raise HTTPException(status_code=404, detail="Title not found")
+        if title_exists is None:
+            raise HTTPException(status_code=404, detail="Title not found")
 
-    return Title(id=title_id, name=deleted.name)
+        connection.execute(
+            sqlalchemy.text(
+                """
+                DELETE FROM titles
+                WHERE id = :title_id
+                """
+            ),
+            {"title_id": title_id},
+        )
