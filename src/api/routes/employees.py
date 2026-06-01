@@ -191,10 +191,7 @@ def get_employees(company_id: int) -> List[Employee]:
             ),
             {"company_id": company_id},
         ).mappings().all()
-        all_employees = [
-            dict(employee)
-                    for e in employees
-                ]
+        all_employees = [dict(e) for e in employees]
     return all_employees
 
 
