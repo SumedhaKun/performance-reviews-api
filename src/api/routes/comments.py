@@ -35,6 +35,7 @@ router = APIRouter(
 
 @router.get("/")
 def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
+    """Get comments by author or employee."""
     if authorId is None and employeeId is None:
         raise HTTPException(
             status_code=400,
@@ -110,6 +111,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
 
 @router.get("/{comment_id}")
 def get_comment(comment_id: int):
+    """Get one comment by id."""
     with db.engine.begin() as connection:
         comment = (
             connection.execute(
@@ -134,6 +136,7 @@ def get_comment(comment_id: int):
 
 @router.post("/", status_code=201)
 def create_comment(new_comment: NewComment):
+    """Create a comment."""
     with db.engine.begin() as connection:
         employee_exists = connection.execute(
             sqlalchemy.text(
@@ -204,6 +207,7 @@ def create_comment(new_comment: NewComment):
 
 @router.delete("/{comment_id}", status_code=204)
 def delete_comment(comment_id: int):
+    """Delete a comment."""
     with db.engine.begin() as connection:
         comment_exists = connection.execute(
             sqlalchemy.text(

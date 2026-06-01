@@ -62,6 +62,7 @@ router = APIRouter(
 
 @router.get("/{employee_id}", response_model=Employee)
 def get_employee(employee_id: int):
+    """Get one employee by id."""
     with db.engine.begin() as connection:
         employee = connection.execute(
             sqlalchemy.text(
@@ -91,6 +92,7 @@ def get_employee_stats(
     start_date: Optional[date] = Query(default=None),
     end_date: Optional[date] = Query(default=None),
 ):
+    """Get review stats for one employee."""
     with db.engine.begin() as connection:
         employee = connection.execute(
             sqlalchemy.text(
@@ -177,9 +179,7 @@ def get_employee_stats(
     "/company/{company_id}", response_model=List[Employee]
 )
 def get_employees(company_id: int) -> List[Employee]:
-    """
-    Retrieves all employees
-    """
+    """Get employees for one company."""
     with db.engine.begin() as connection:
         employees = connection.execute(
             sqlalchemy.text(
@@ -200,6 +200,7 @@ def get_employees(company_id: int) -> List[Employee]:
 
 @router.post("/", response_model=Employee)
 def add_employee(new_employee: NewEmployee):
+    """Create an employee."""
     with db.engine.begin() as connection:
         company_exists = connection.execute(
             sqlalchemy.text(
@@ -259,6 +260,7 @@ def add_employee(new_employee: NewEmployee):
 
 @router.delete("/{employee_id}/", status_code=204)
 def delete_employee(employee_id: int):
+    """Delete an employee."""
     with db.engine.begin() as connection:
         employee_exists = connection.execute(
             sqlalchemy.text(
