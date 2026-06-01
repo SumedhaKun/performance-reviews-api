@@ -11,7 +11,7 @@ Response:
 	“createdAt”: Date
 }]
 
-2. GET /employees/{employee_id}
+2. GET /employees/{employee_id}/
 Response:
 {
 	“id”: id,
@@ -40,7 +40,7 @@ Response:
 	“createdAt”: Date
 }
 
-4. DELETE /employees/{employee_id}
+4. DELETE /employees/{employee_id}/
 	<No Response>
 
 
@@ -69,7 +69,7 @@ Response:
   "createdAt": Date
 }]
 
-6. GET /performance_reviews/{review_id}
+6. GET /performance_reviews/{review_id}/
 Response:
 {	
   “id”: id
@@ -125,7 +125,7 @@ Response:
 	“createdAt”: Date
 }
 	
-8. DELETE /performance_reviews/{review_id}
+8. DELETE /performance_reviews/{review_id}/
   <No response>
 
 comments
@@ -162,7 +162,7 @@ Response:
 		“createdAt”: Date
 }]
 
-11. GET /comments/{comment_id}
+11. GET /comments/{comment_id}/
 Response Body:
 {
 	“id”: int,
@@ -172,14 +172,14 @@ Response Body:
 	“authorId”: id,
 	“createdAt”: Date
 }
-DELETE /comments/{comment_id}
+DELETE /comments/{comment_id}/
 
 	<No Response>
 
 
 ###complex endpoints
 
-12. GET /employees/{employee_id}/stats
+12. GET /employees/{employee_id}/stats/
 optional query parameters:
 start_date: Date
 end_date: Date
@@ -206,7 +206,7 @@ Response:
   "level_change_rate": float
 }
 
-13. GET /companies/{company_id}/departments/{department}/stats
+13. GET /companies/{company_id}/departments/{department}/stats/
 Optional query parameters:
 start_date: Date
 end_date: Date

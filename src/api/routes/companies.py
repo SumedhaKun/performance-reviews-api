@@ -39,8 +39,9 @@ router = APIRouter(
 )
 
 
-@router.get("/{company_id}")
+@router.get("/{company_id}/")
 def get_company(company_id: int):
+    """Get one company by id."""
     with db.engine.begin() as connection:
         company = (
             connection.execute(
@@ -65,7 +66,7 @@ def get_company(company_id: int):
 
 
 @router.get(
-    "/{company_id}/departments/{department}/stats",
+    "/{company_id}/departments/{department}/stats/",
     response_model=DepartmentStats,
 )
 def get_department_stats(
@@ -74,6 +75,7 @@ def get_department_stats(
     start_date: Optional[date] = Query(default=None),
     end_date: Optional[date] = Query(default=None),
 ):
+    """Get review stats for one company department."""
     with db.engine.begin() as connection:
         company = connection.execute(
             sqlalchemy.text(
@@ -182,6 +184,7 @@ def get_department_stats(
 
 @router.post("/", status_code=201)
 def create_company(new_company: NewCompany):
+    """Create a company."""
     with db.engine.begin() as connection:
         company = (
             connection.execute(

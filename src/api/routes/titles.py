@@ -22,8 +22,9 @@ router = APIRouter(
 )
 
 
-@router.get("/{title_id}")
+@router.get("/{title_id}/")
 def get_tag(title_id: int):
+    """Get one title by id."""
     with db.engine.begin() as connection:
         title = connection.execute(
             sqlalchemy.text(
@@ -44,9 +45,7 @@ def get_tag(title_id: int):
 
 @router.get("/", response_model=List[Title])
 def get_titles() -> List[Title]:
-    """
-    Retrieves all titles
-    """
+    """Get all titles."""
     with db.engine.begin() as connection:
         titles = connection.execute(
             sqlalchemy.text(
@@ -56,12 +55,13 @@ def get_titles() -> List[Title]:
                 """
             )
         ).mappings().all()
-        all_titles = [dict(title) for t in titles]
+        all_titles = [dict(title) for title in titles]
     return all_titles
 
 
 @router.post("/", response_model=Title)
 def add_title(new_title: NewTitle):
+    """Create a title."""
     with db.engine.begin() as connection:
         title = connection.execute(
             sqlalchemy.text(
@@ -81,6 +81,7 @@ def add_title(new_title: NewTitle):
 
 @router.delete("/{title_id}/", status_code=204)
 def delete_title(title_id: int):
+    """Delete a title."""
     with db.engine.begin() as connection:
         title_exists = connection.execute(
             sqlalchemy.text(

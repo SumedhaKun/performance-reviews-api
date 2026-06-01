@@ -28,6 +28,7 @@ router = APIRouter(
 
 @router.get("/")
 def get_performance_reviews():
+    """Get all performance reviews."""
     with db.engine.begin() as connection:
         performance_reviews = (
             connection.execute(
@@ -47,8 +48,9 @@ def get_performance_reviews():
     return performance_reviews
 
 
-@router.get("/{review_id}")
+@router.get("/{review_id}/")
 def get_performance_review(review_id: int):
+    """Get one performance review by id."""
     with db.engine.begin() as connection:
         performance_review = (
             connection.execute(
@@ -75,6 +77,7 @@ def get_performance_review(review_id: int):
 
 @router.post("/", status_code=201)
 def create_performance_review(performance_review: PerformanceReview):
+    """Create a performance review."""
     with db.engine.begin() as connection:
         performance_review = (
             connection.execute(
@@ -117,8 +120,9 @@ def create_performance_review(performance_review: PerformanceReview):
     return dict(performance_review)
 
 
-@router.delete("/{review_id}", status_code=204)
+@router.delete("/{review_id}/", status_code=204)
 def delete_performance_row(review_id: int):
+    """Delete a performance review."""
     with db.engine.begin() as connection:
         review_exists = connection.execute(
             sqlalchemy.text(
@@ -143,7 +147,7 @@ def delete_performance_row(review_id: int):
         )
 
 
-@router.patch("/{review_id}", status_code=200)
+@router.patch("/{review_id}/", status_code=200)
 def patch_performance_review(
     review_id: int,
     employee_id: int | None = None,
@@ -159,6 +163,7 @@ def patch_performance_review(
     title_change: int | None = None,
     level_change: int | None = None,
 ):
+    """Update fields on a performance review."""
     update_fields = {
         "employee_id": employee_id,
         "review_period_start": review_period_start,
