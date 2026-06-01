@@ -1,25 +1,39 @@
 import sqlalchemy
-import os
-import dotenv
+#import os
+#import dotenv
 from faker import Faker
+import random
 from queue import *
+from datetime import date, datetime
 import numpy as np
 
+
+'''
+CALCULATIONS:
+row per employee
+1 (employee) + avg 14 appraisals + avg 14 prs + 5 comments = avg 34 row per employee
+1,000,000 / 36 = 29,411 employees needed
+we will make 30,000
+30 mini companies * 30 = 900 employees
+61 small companies * 100 = 6100 employees
+8 medium companies * 1000 = 8000 employees
+3 large companies * 5000 = 15000 employees
+900 + 6100 + 8000 + 15000 = 30,000
+'''
+mini_companies = 30
+small_companies = 61
+medium_companies = 8
+large_companies = 3
+
 class Company:
-    def __init__(self, name, industry, headquarters, founded_date, active, employees, comments, appraisals, prs):
+    def __init__(self, name, industry, headquarters, active):
         self.name = name
         self.industry = industry
         self.headquarters = headquarters
-        self.founded_date = founded_date
         self.active = active
-        self.employees = employees
-        self.comments = comments
-        self.appraisals = appraisals
-        self.prs = prs
 
 class Employee:
     def __init__(self, company, first, last, email, phone, title_id, level, department, hire_date, current_employee):
-
         self.company = company
         self.first = first
         self.last = last
@@ -32,11 +46,12 @@ class Employee:
         self.current_employee = current_employee
 
 class Comment:
-    def __init__(self, employee_id, commenter_id, content, created_at):
+    def __init__(self, employee_id, commenter_id, content, created_at, subject):
         self.employee_id = employee_id
         self.commenter_id = commenter_id
         self.content = content
         self.created_at = created_at
+        self.subject = subject
 
 class Appraisal:
     def __init__(self, employee_id, comment, created_at):
@@ -74,57 +89,556 @@ class PerformanceReview:
         self.level_change = level_change
 
 def database_connection_url():
-    dotenv.load_dotenv()
-    DB_USER: str = os.environ.get("POSTGRES_USER")
-    DB_PASSWD = os.environ.get("POSTGRES_PASSWORD")
-    DB_SERVER: str = os.environ.get("POSTGRES_SERVER")
-    DB_PORT: str = os.environ.get("POSTGRES_PORT")
-    DB_NAME: str = os.environ.get("POSTGRES_DB")
-    return f"postgresql://{DB_USER}:{DB_PASSWD}@{DB_SERVER}:{DB_PORT}/{DB_NAME}"
+    #dotenv.load_dotenv()
+    #DB_USER: str = os.environ.get("POSTGRES_USER")
+    #DB_PASSWD = os.environ.get("POSTGRES_PASSWORD")
+    #DB_SERVER: str = os.environ.get("POSTGRES_SERVER")
+    #DB_PORT: str = os.environ.get("POSTGRES_PORT")
+    #DB_NAME: str = os.environ.get("POSTGRES_DB")
+    return f"postgresql+psycopg://myuser:mypassword@localhost/pr_database"
 
-def create_small_company():
-    # generate name, industry, headquarters, founded_date, active
-    name = 'placeholder'
-    # randomly generate so 50% have founded date as null
-    # maybe have all have founded_date as null since it would be hard to sync that up with
-    #   the hire dates/prs of employees and i dont think it rlly matters to any of our queries
-    #   or just make it like 100 years ago
-    # randomly make 5% of companies inactive
+def fake_employee():
+    first = fake.first_name()
+    last = fake.last_name()
 
-    employees = []
-    levels = 2
-    employees_per_level = 5
-    # generate employees:
-    # generate CEO (using faker)
-    # CEO department = 'ALL'
-    # append to list
-    make_suboordinate_queue = Queue()
-    for i in range(employees_per_level):
-        # generate an employee using faker
-        # add to make_suboordinate_queue
-        pass
-    while not make_suboordinate_queue.empty():
-        # pop the top person
-        # get their department
-        # generate employee and add to list
-        pass
+    return Employee(
+        company=None,  # unknown for now
+        first=first,
+        last=last,
+        email=fake.email(),
+        phone=fake.phone_number(),
+        title_id=None,  # generated later
+        level=None,     # generated later
+        department=random.choice(departments),
+        hire_date=fake.date_between(start_date="-30y", end_date="today"),
+        current_employee=random.random() >= 0.08,  # 8% inactive
+    )
 
-    pass
+
 
 # Create a new DB engine based on our connection string
 engine = sqlalchemy.create_engine(database_connection_url(), use_insertmanyvalues=True)
+fake = Faker()
+rng = np.random.default_rng()
 titles = ['CEO', 'Manager', 'Grunt']
-# TODO
-departments = []
-headquarters = []
+departments = ['IT', 'HR', 'Sales', 'Customer Service', 'Product Development']
+industries = ['Tech', 'Finance', 'Education', 'Social', 'Fashion']
+headquarters = ['SLO', 'LA', 'NY', 'SF', 'Santa Maria']
+subjects = ['Work ethic', 'Efficiency', 'Punctuality', 'Other', 'Teamwork', 'Leadership', 'Improvement']
+mini_company_employees = 30
+small_company_employees = 100
+medium_company_employees = 1000
+large_company_employees = 5000
+comments_per_employee = 5
 
 with engine.begin() as conn:
     # truncate tables
-    conn.execute(sqlalchemy.text("""
-    """))
+    conn.execute(
+        sqlalchemy.text(
+            """
+            TRUNCATE TABLE titles RESTART IDENTITY CASCADE;
+            TRUNCATE TABLE employees RESTART IDENTITY CASCADE;
+            TRUNCATE TABLE companies RESTART IDENTITY CASCADE;
+            TRUNCATE TABLE appraisals;
+            TRUNCATE TABLE comments;
+            TRUNCATE TABLE performance_reviews;
+            """
+        )
+    )
 
-    # insert all 3 titles into titles w/ known ids
-    # create appropriate number of small companies & append info
-    # create appropriate number of medium companies & append info
-    # create appropriate number of large companies & append info
-    # insert all
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO titles (name) VALUES (:t)
+            """
+        ), [{'t': title} for title in titles]
+    )
+
+    num_employees = 30000
+    employees = [fake_employee() for _ in range(num_employees)]
+    print('employees generated')
+    companies = []
+    comments = []
+    appraisals = []
+    prs = []
+
+    employee_offset = 0
+    company_id = 1
+    # make mini companies
+    for _ in range(mini_companies):
+        # make company
+        print(f'company {company_id}, employee {employee_offset}')
+        appraisal_month = random.randint(1, 12)
+        appraisal_day = random.randint(1, 28)
+        companies.append(
+            Company(
+                fake.company(),
+                random.choice(industries),
+                random.choice(headquarters),
+                random.random() >= 0.05
+            )
+        )
+        
+        # for each employee
+        for i in range(employee_offset, employee_offset + mini_company_employees):
+            employees[i].company = company_id
+            for _ in range(comments_per_employee):
+                comments.append(
+                    Comment(
+                        employee_id=i + 1,
+                        commenter_id=random.randint(employee_offset, employee_offset + mini_company_employees - 1) + 1,
+                        content=fake.paragraph(nb_sentences=1),
+                        created_at=fake.date_time_between(
+                            start_date=employees[i].hire_date,
+                            end_date="now"
+                        ),
+                        subject=random.choice(subjects)
+                    )
+                )
+            # make one appraisal per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026 + 1):
+                appraisal_date = date(year, appraisal_month, appraisal_day)
+
+                # Skip June 13 of hire year if they were hired after June 13
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                appraisals.append(
+                    Appraisal(
+                        employee_id=i + 1,
+                        comment=fake.paragraph(nb_sentences=3),
+                        created_at=datetime(year, appraisal_month, appraisal_day)
+                    )
+                )
+            # make one performance review per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026):
+                review_date = date(year, appraisal_month, appraisal_day)
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                ratings = rng.normal(7, 1, 4)
+                prs.append(
+                    PerformanceReview(
+                        employee_id = i + 1,
+                        review_period_start = date(year, 1, 1),
+                        review_period_end = date(year, 12, 31),
+                        review_date = review_date,
+                        reviewer_id = random.randint(employee_offset + 1, employee_offset + 4),
+                        overall_rating = ratings[0],
+                        category_1 = ratings[1],
+                        category_2 = ratings[2],
+                        category_3 = ratings[3],
+                        comment = fake.paragraph(nb_sentences=1),
+                        title_change = int(random.random() <= 0.05),
+                        level_change = int(random.random() <= 0.05)
+                    )
+                )
+        # make ceo
+        employees[employee_offset].title_id = 1
+        employees[employee_offset].department = 'All'
+        employees[employee_offset].active = True
+        employees[employee_offset].level = 1
+
+        # make managers
+        for i in range(employee_offset + 1, employee_offset + 4):
+            employees[i].title_id = 2
+            employees[i].level = 2
+        # make regular employees
+        for i in range(employee_offset + 4, employee_offset + mini_company_employees):
+            employees[i].title_id = 3
+            employees[i].level = 3
+        
+        company_id += 1
+        employee_offset += mini_company_employees
+    
+
+
+    # make small companies
+    for _ in range(small_companies):
+        # make company
+        print(f'company {company_id}, employee {employee_offset}')
+        appraisal_month = random.randint(1, 12)
+        appraisal_day = random.randint(1, 28)
+        # levels = 4
+        last_manager = employee_offset + (small_company_employees // 3)
+
+        companies.append(
+            Company(
+                fake.company(),
+                random.choice(industries),
+                random.choice(headquarters),
+                random.random() >= 0.05
+            )
+        )
+        
+        # for each employee
+        for i in range(employee_offset, employee_offset + small_company_employees):
+            employees[i].company = company_id
+            for _ in range(comments_per_employee):
+                comments.append(
+                    Comment(
+                        employee_id=i + 1,
+                        commenter_id=random.randint(employee_offset, employee_offset + small_company_employees - 1) + 1,
+                        content=fake.paragraph(nb_sentences=1),
+                        created_at=fake.date_time_between(
+                            start_date=employees[i].hire_date,
+                            end_date="now"
+                        ),
+                        subject=random.choice(subjects)
+                    )
+                )
+            # make one appraisal per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026 + 1):
+                appraisal_date = date(year, appraisal_month, appraisal_day)
+
+                # Skip June 13 of hire year if they were hired after June 13
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                appraisals.append(
+                    Appraisal(
+                        employee_id=i + 1,
+                        comment=fake.paragraph(nb_sentences=3),
+                        created_at=datetime(year, appraisal_month, appraisal_day)
+                    )
+                )
+            # make one performance review per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026):
+                review_date = date(year, appraisal_month, appraisal_day)
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                ratings = rng.normal(7, 1, 4)
+                prs.append(
+                    PerformanceReview(
+                        employee_id = i + 1,
+                        review_period_start = date(year, 1, 1),
+                        review_period_end = date(year, 12, 31),
+                        review_date = review_date,
+                        reviewer_id = random.randint(employee_offset, last_manager) + 1,
+                        overall_rating = ratings[0],
+                        category_1 = ratings[1],
+                        category_2 = ratings[2],
+                        category_3 = ratings[3],
+                        comment = fake.paragraph(nb_sentences=1),
+                        title_change = int(random.random() <= 0.05),
+                        level_change = int(random.random() <= 0.05)
+                    )
+                )
+        # make ceo
+        employees[employee_offset].title_id = 1
+        employees[employee_offset].department = 'All'
+        employees[employee_offset].active = True
+        employees[employee_offset].level = 1
+
+        # make managers
+        for i in range(employee_offset + 1, last_manager + 1):
+            employees[i].title_id = 2
+            employees[i].level = random.randint(2, 3)
+        # make regular employees
+
+        for i in range(last_manager + 1, employee_offset + small_company_employees):
+            employees[i].title_id = 3
+            employees[i].level = 4
+        
+        company_id += 1
+        employee_offset += small_company_employees
+    
+    # make medium companies
+    for _ in range(medium_companies):
+        # make company
+        print(f'company {company_id}, employee {employee_offset}')
+        appraisal_month = random.randint(1, 12)
+        appraisal_day = random.randint(1, 28)
+        levels = random.randint(7, 12)
+        last_manager = employee_offset + (medium_company_employees // 2)
+
+        companies.append(
+            Company(
+                fake.company(),
+                random.choice(industries),
+                random.choice(headquarters),
+                random.random() >= 0.05
+            )
+        )
+        
+        # for each employee
+        for i in range(employee_offset, employee_offset + medium_company_employees):
+            employees[i].company = company_id
+            for _ in range(comments_per_employee):
+                comments.append(
+                    Comment(
+                        employee_id=i + 1,
+                        commenter_id=random.randint(employee_offset, employee_offset + medium_company_employees - 1) + 1,
+                        content=fake.paragraph(nb_sentences=1),
+                        created_at=fake.date_time_between(
+                            start_date=employees[i].hire_date,
+                            end_date="now"
+                        ),
+                        subject=random.choice(subjects)
+                    )
+                )
+            # make one appraisal per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026 + 1):
+                appraisal_date = date(year, appraisal_month, appraisal_day)
+
+                # Skip June 13 of hire year if they were hired after June 13
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                appraisals.append(
+                    Appraisal(
+                        employee_id=i + 1,
+                        comment=fake.paragraph(nb_sentences=3),
+                        created_at=datetime(year, appraisal_month, appraisal_day)
+                    )
+                )
+            # make one performance review per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026):
+                review_date = date(year, appraisal_month, appraisal_day)
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                ratings = rng.normal(7, 1, 4)
+                prs.append(
+                    PerformanceReview(
+                        employee_id = i + 1,
+                        review_period_start = date(year, 1, 1),
+                        review_period_end = date(year, 12, 31),
+                        review_date = review_date,
+                        reviewer_id = random.randint(employee_offset, last_manager) + 1,
+                        overall_rating = ratings[0],
+                        category_1 = ratings[1],
+                        category_2 = ratings[2],
+                        category_3 = ratings[3],
+                        comment = fake.paragraph(nb_sentences=1),
+                        title_change = int(random.random() <= 0.05),
+                        level_change = int(random.random() <= 0.05)
+                    )
+                )
+        # make ceo
+        employees[employee_offset].title_id = 1
+        employees[employee_offset].department = 'All'
+        employees[employee_offset].active = True
+        employees[employee_offset].level = 1
+
+        # make managers
+        for i in range(employee_offset + 1, last_manager + 1):
+            employees[i].title_id = 2
+            employees[i].level = random.randint(2, levels - 1)
+        # make regular employees
+
+        for i in range(last_manager + 1, employee_offset + medium_company_employees):
+            employees[i].title_id = 3
+            employees[i].level = random.randint(levels // 2 + 1, levels)
+        
+        company_id += 1
+        employee_offset += medium_company_employees
+
+    # make large companies
+    for _ in range(large_companies):
+        # make company
+        print(f'company {company_id}, employee {employee_offset}')
+        appraisal_month = random.randint(1, 12)
+        appraisal_day = random.randint(1, 28)
+        levels = random.randint(15, 20)
+        last_manager = employee_offset + int(large_company_employees * 0.65)
+
+        companies.append(
+            Company(
+                fake.company(),
+                random.choice(industries),
+                random.choice(headquarters),
+                random.random() >= 0.05
+            )
+        )
+        
+        # for each employee
+        for i in range(employee_offset, employee_offset + large_company_employees):
+            employees[i].company = company_id
+            for _ in range(comments_per_employee):
+                comments.append(
+                    Comment(
+                        employee_id=i + 1,
+                        commenter_id=random.randint(employee_offset, employee_offset + large_company_employees - 1) + 1,
+                        content=fake.paragraph(nb_sentences=1),
+                        created_at=fake.date_time_between(
+                            start_date=employees[i].hire_date,
+                            end_date="now"
+                        ),
+                        subject=random.choice(subjects)
+                    )
+                )
+            # make one appraisal per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026 + 1):
+                appraisal_date = date(year, appraisal_month, appraisal_day)
+
+                # Skip June 13 of hire year if they were hired after June 13
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                appraisals.append(
+                    Appraisal(
+                        employee_id=i + 1,
+                        comment=fake.paragraph(nb_sentences=3),
+                        created_at=datetime(year, appraisal_month, appraisal_day)
+                    )
+                )
+            # make one performance review per year that the employee has been hired
+            for year in range(employees[i].hire_date.year, 2026):
+                review_date = date(year, appraisal_month, appraisal_day)
+                if appraisal_date < employees[i].hire_date:
+                    continue
+
+                ratings = rng.normal(7, 1, 4)
+                prs.append(
+                    PerformanceReview(
+                        employee_id = i + 1,
+                        review_period_start = date(year, 1, 1),
+                        review_period_end = date(year, 12, 31),
+                        review_date = review_date,
+                        reviewer_id = random.randint(employee_offset, last_manager) + 1,
+                        overall_rating = ratings[0],
+                        category_1 = ratings[1],
+                        category_2 = ratings[2],
+                        category_3 = ratings[3],
+                        comment = fake.paragraph(nb_sentences=1),
+                        title_change = int(random.random() <= 0.05),
+                        level_change = int(random.random() <= 0.05)
+                    )
+                )
+        # make ceo
+        employees[employee_offset].title_id = 1
+        employees[employee_offset].department = 'All'
+        employees[employee_offset].active = True
+        employees[employee_offset].level = 1
+
+        # make managers
+        for i in range(employee_offset + 1, last_manager + 1):
+            employees[i].title_id = 2
+            employees[i].level = random.randint(2, levels - 1)
+        # make regular employees
+
+        for i in range(last_manager + 1, employee_offset + large_company_employees):
+            employees[i].title_id = 3
+            employees[i].level = random.randint(levels // 2 - 7, levels)
+        
+        company_id += 1
+        employee_offset += large_company_employees
+
+    print("starting insertions")
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO companies (name, industry, headquarters_location, active)
+            VALUES (:name, :industry, :headquarters, :active)
+            """
+        ),
+        [
+            {
+                "name": company.name,
+                "industry": company.industry,
+                "headquarters": company.headquarters,
+                "active": company.active,
+            }
+            for company in companies
+        ]
+    )
+    print("companies inserted")
+
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO employees (company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee)
+            VALUES (:c, :fn, :ln, :email, :phone, :tid, :level, :dep, :hire, :current)
+            """
+        ),
+        [{
+            "c": 1 if e.company is None else e.company,
+            "fn": e.first,
+            "ln": e.last,
+            "email": e.email,
+            "phone": e.phone,
+            "tid": e.title_id,
+            "level": e.level,
+            "dep": e.department,
+            "hire": e.hire_date,
+            "current": e.current_employee,
+        } for e in employees ]
+    )
+
+    print("employees inserted")
+    
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO comments (employee_id, commenter_id, content, created_at, subject)
+            VALUES (:eid, :cid, :content, :time, :subject)
+            """
+        ),
+        [{"eid": c.employee_id, "cid": c.commenter_id, "content": c.content, "time": c.created_at, "subject": c.subject} for c in comments]
+    )
+
+    print("comments inserted")
+
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO appraisals (employee_id, comment, created_at)
+            VALUES (:eid, :content, :time)
+            """
+        ),
+        [{"eid": a.employee_id, "content": a.comment, "time": a.created_at} for a in appraisals]
+    )
+
+    print("appraisals inserted")
+
+    conn.execute(
+        sqlalchemy.text(
+            """
+            INSERT INTO performance_reviews ( employee_id,
+                reviewer_id,
+                review_period_start,
+                review_period_end,
+                review_date,
+                overall_rating,
+                category_1,
+                category_2,
+                category_3,
+                comment,
+                title_change,
+                level_change
+            )
+            VALUES (
+                :employee_id,
+                :reviewer_id,
+                :review_period_start,
+                :review_period_end,
+                :review_date,
+                :overall_rating,
+                :category_1,
+                :category_2,
+                :category_3,
+                :comment,
+                :title_change,
+                :level_change
+            )
+            """
+        ),
+        [{
+            "employee_id": pr.employee_id,
+            "reviewer_id": pr.reviewer_id,
+            "review_period_start": pr.review_period_start,
+            "review_period_end": pr.review_period_end,
+            "review_date": pr.review_date,
+            "overall_rating": pr.overall_rating,
+            "category_1": pr.category_1,
+            "category_2": pr.category_2,
+            "category_3": pr.category_3,
+            "comment": pr.comment,
+            "title_change": pr.title_change,
+            "level_change": pr.level_change
+        } for pr in prs ]
+    )
+
+    print("done!")
