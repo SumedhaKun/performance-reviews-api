@@ -39,7 +39,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{company_id}")
+@router.get("/{company_id}/")
 def get_company(company_id: int):
     """Get one company by id."""
     with db.engine.begin() as connection:
@@ -66,7 +66,7 @@ def get_company(company_id: int):
 
 
 @router.get(
-    "/{company_id}/departments/{department}/stats",
+    "/{company_id}/departments/{department}/stats/",
     response_model=DepartmentStats,
 )
 def get_department_stats(

@@ -48,7 +48,7 @@ def get_performance_reviews():
     return performance_reviews
 
 
-@router.get("/{review_id}")
+@router.get("/{review_id}/")
 def get_performance_review(review_id: int):
     """Get one performance review by id."""
     with db.engine.begin() as connection:
@@ -120,7 +120,7 @@ def create_performance_review(performance_review: PerformanceReview):
     return dict(performance_review)
 
 
-@router.delete("/{review_id}", status_code=204)
+@router.delete("/{review_id}/", status_code=204)
 def delete_performance_row(review_id: int):
     """Delete a performance review."""
     with db.engine.begin() as connection:
@@ -147,7 +147,7 @@ def delete_performance_row(review_id: int):
         )
 
 
-@router.patch("/{review_id}", status_code=200)
+@router.patch("/{review_id}/", status_code=200)
 def patch_performance_review(
     review_id: int,
     employee_id: int | None = None,

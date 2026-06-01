@@ -109,7 +109,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
     return [format_comment(comment) for comment in comments]
 
 
-@router.get("/{comment_id}")
+@router.get("/{comment_id}/")
 def get_comment(comment_id: int):
     """Get one comment by id."""
     with db.engine.begin() as connection:
@@ -205,7 +205,7 @@ def create_comment(new_comment: NewComment):
     return format_comment(comment)
 
 
-@router.delete("/{comment_id}", status_code=204)
+@router.delete("/{comment_id}/", status_code=204)
 def delete_comment(comment_id: int):
     """Delete a comment."""
     with db.engine.begin() as connection:

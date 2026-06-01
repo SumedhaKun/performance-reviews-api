@@ -15,3 +15,4 @@
 - Change employee phone numbers to validated strings
 - Use date consistently across employee, company, and review date fields
 - Fix misleading docstrings and add missing route docstrings
+- Standardize route trailing slash style to /smth/
