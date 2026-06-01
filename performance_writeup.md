@@ -1,7 +1,7 @@
 ## Fake Data Modeling
 We generated 30,000 employees, 102 companies, ~420,000 appraisals, ~420,000 performance reviews, and 150,000 comments.  \
 These companies were split into 30 mini companies (with 30 employees), 61 small companies (with 100 employees), 8 medium
-companies (with 1000 employees), and 3 large companies (with 1000 employees). Due to the fact that there are less larger
+companies (with 1000 employees), and 3 large companies (with 5000 employees). Due to the fact that there are less larger
 companies in the world, we thought there would be less larger companies using our service. Howeer, the mini companies would
 have less of a reason to use our service. The attributes for the companies were simply generated using Faker and choosing
 randomly from our pre-set list of industries.
