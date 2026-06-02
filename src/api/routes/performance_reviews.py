@@ -20,6 +20,21 @@ class PerformanceReview(BaseModel):
     title_change: int = Field(ge=0, le=1)
     level_change: int = Field(ge=0, le=1)
 
+
+class PerformanceReviewDraft(BaseModel):
+    employee_id: int | None = None
+    review_period_start: date | None = None
+    review_period_end: date | None = None
+    review_date: date | None = None
+    reviewer_id: int | None = None
+    overall_rating: int | None = None
+    category_1: int | None = None
+    category_2: int | None = None
+    category_3: int | None = None
+    comment: str | None = None
+    title_change: int | None = None
+    level_change: int | None = None
+
 router = APIRouter(
     prefix="/performance_reviews",
     tags=["performance_reviews"],
@@ -74,6 +89,136 @@ def get_performance_review(review_id: int):
 
     return dict(performance_review)
 
+@router.post("/draft", status_code=201)
+def create_draft(performance_review: PerformanceReviewDraft):
+    with db.engine.begin() as connection:
+        result = connection.execute(
+            sqlalchemy.text("""
+                INSERT INTO pr_draft (
+                    employee_id,
+                    review_period_start,
+                    review_period_end,
+                    review_date,
+                    reviewer_id,
+                    overall_rating,
+                    category_1,
+                    category_2,
+                    category_3,
+                    comment,
+                    title_change,
+                    level_change
+                )
+                VALUES (
+                    :employee_id,
+                    :review_period_start,
+                    :review_period_end,
+                    :review_date,
+                    :reviewer_id,
+                    :overall_rating,
+                    :category_1,
+                    :category_2,
+                    :category_3,
+                    :comment,
+                    :title_change,
+                    :level_change
+                )
+                RETURNING id
+            """),
+            performance_review.model_dump(),
+        )
+
+        draft_id = result.scalar_one()
+
+    return {"id": draft_id}
+
+@router.patch("/draft/{draft_id}")
+def update_draft(
+    draft_id: int,
+    performance_review: PerformanceReviewDraft,
+):
+    values = performance_review.model_dump(exclude_unset=True)
+
+    if not values:
+        return {"success": True}
+
+    set_clause = ", ".join(f"{key} = :{key}" for key in values)
+
+    query = f"""
+        UPDATE pr_draft
+        SET {set_clause}
+        WHERE id = :draft_id
+    """
+
+    values["draft_id"] = draft_id
+
+    with db.engine.begin() as connection:
+        result = connection.execute(sqlalchemy.text(query), values)
+
+        if result.rowcount == 0:
+            raise HTTPException(404, "Draft not found")
+
+    return {"success": True}
+
+
+@router.post("/submit/{draft_id}", status_code=201)
+def submit_draft(draft_id: int):
+    with db.engine.begin() as connection:
+        draft = connection.execute(
+            sqlalchemy.text("""
+                SELECT *
+                FROM pr_draft
+                WHERE id = :draft_id
+            """),
+            {"draft_id": draft_id},
+        ).mappings().first()
+
+        if not draft:
+            raise HTTPException(404, "Draft not found")
+
+        review_id = connection.execute(
+            sqlalchemy.text("""
+                INSERT INTO performance_reviews (
+                    employee_id,
+                    review_period_start,
+                    review_period_end,
+                    review_date,
+                    reviewer_id,
+                    overall_rating,
+                    category_1,
+                    category_2,
+                    category_3,
+                    comment,
+                    title_change,
+                    level_change
+                )
+                VALUES (
+                    :employee_id,
+                    :review_period_start,
+                    :review_period_end,
+                    :review_date,
+                    :reviewer_id,
+                    :overall_rating,
+                    :category_1,
+                    :category_2,
+                    :category_3,
+                    :comment,
+                    :title_change,
+                    :level_change
+                )
+                RETURNING id
+            """),
+            dict(draft),
+        ).scalar_one()
+
+        connection.execute(
+            sqlalchemy.text("""
+                DELETE FROM pr_draft
+                WHERE id = :draft_id
+            """),
+            {"draft_id": draft_id},
+        )
+
+    return {"id": review_id}
 
 @router.post("/", status_code=201)
 def create_performance_review(performance_review: PerformanceReview):
