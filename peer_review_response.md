@@ -19,3 +19,5 @@
 - Rename title route handler to get_title
 - Add explicit response models to remaining routes
 - Move repeated existence checks and formatting into helpers
+- Align Python version requirement with Render
+- Remove API key debug print from auth.py
