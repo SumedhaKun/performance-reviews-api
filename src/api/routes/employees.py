@@ -15,7 +15,7 @@ class Employee(BaseModel):
     first_name: str
     last_name: str
     email: str
-    phone: str = Field(min_length=10, max_length=10)
+    phone: str
     title_id: int
     level: int  # should probably make this annotated
     department: str

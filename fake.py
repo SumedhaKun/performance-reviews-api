@@ -10,20 +10,27 @@ import numpy as np
 
 '''
 CALCULATIONS:
-row per employee
-1 (employee) + avg 14 appraisals + avg 14 prs + 5 comments = avg 34 row per employee
-1,000,000 / 36 = 29,411 employees needed
-we will make 30,000
-30 mini companies * 30 = 900 employees
-61 small companies * 100 = 6100 employees
-8 medium companies * 1000 = 8000 employees
-3 large companies * 5000 = 15000 employees
-900 + 6100 + 8000 + 15000 = 30,000
+DATA GENERATION TARGETS
+
+Company counts:
+- 60 mini companies   × 60 employees   = 3,600
+- 122 small companies × 200 employees  = 24,400
+- 16 medium companies × 2,000 employees = 32,000
+- 6 large companies   × 10,000 employees = 60,000
+
+Total employees: 120,000
+
+Each employee receives:
+- Employee record
+- ~20 comments
+- One appraisal per eligible year
+- One performance review per eligible year
+
 '''
-mini_companies = 30
-small_companies = 61
-medium_companies = 8
-large_companies = 3
+mini_companies = 60
+small_companies = 122
+medium_companies = 16
+large_companies = 6
 
 class Company:
     def __init__(self, name, industry, headquarters, active):
@@ -125,11 +132,11 @@ departments = ['IT', 'HR', 'Sales', 'Customer Service', 'Product Development']
 industries = ['Tech', 'Finance', 'Education', 'Social', 'Fashion']
 headquarters = ['SLO', 'LA', 'NY', 'SF', 'Santa Maria']
 subjects = ['Work ethic', 'Efficiency', 'Punctuality', 'Other', 'Teamwork', 'Leadership', 'Improvement']
-mini_company_employees = 30
-small_company_employees = 100
-medium_company_employees = 1000
-large_company_employees = 5000
-comments_per_employee = 5
+mini_company_employees = 60
+small_company_employees = 200
+medium_company_employees = 2000
+large_company_employees = 10000
+comments_per_employee = 20
 
 with engine.begin() as conn:
     # truncate tables
@@ -154,7 +161,10 @@ with engine.begin() as conn:
         ), [{'t': title} for title in titles]
     )
 
-    num_employees = 30000
+    num_employees = (mini_companies * mini_company_employees +
+    small_companies * small_company_employees +
+    medium_companies * medium_company_employees +
+    large_companies * large_company_employees)
     employees = [fake_employee() for _ in range(num_employees)]
     print('employees generated')
     companies = []
@@ -178,7 +188,7 @@ with engine.begin() as conn:
                 random.random() >= 0.05
             )
         )
-        
+
         # for each employee
         for i in range(employee_offset, employee_offset + mini_company_employees):
             employees[i].company = company_id
@@ -247,10 +257,10 @@ with engine.begin() as conn:
         for i in range(employee_offset + 4, employee_offset + mini_company_employees):
             employees[i].title_id = 3
             employees[i].level = 3
-        
+
         company_id += 1
         employee_offset += mini_company_employees
-    
+
 
 
     # make small companies
@@ -270,7 +280,7 @@ with engine.begin() as conn:
                 random.random() >= 0.05
             )
         )
-        
+
         # for each employee
         for i in range(employee_offset, employee_offset + small_company_employees):
             employees[i].company = company_id
@@ -340,10 +350,10 @@ with engine.begin() as conn:
         for i in range(last_manager + 1, employee_offset + small_company_employees):
             employees[i].title_id = 3
             employees[i].level = 4
-        
+
         company_id += 1
         employee_offset += small_company_employees
-    
+
     # make medium companies
     for _ in range(medium_companies):
         # make company
@@ -361,7 +371,7 @@ with engine.begin() as conn:
                 random.random() >= 0.05
             )
         )
-        
+
         # for each employee
         for i in range(employee_offset, employee_offset + medium_company_employees):
             employees[i].company = company_id
@@ -431,7 +441,7 @@ with engine.begin() as conn:
         for i in range(last_manager + 1, employee_offset + medium_company_employees):
             employees[i].title_id = 3
             employees[i].level = random.randint(levels // 2 + 1, levels)
-        
+
         company_id += 1
         employee_offset += medium_company_employees
 
@@ -452,7 +462,7 @@ with engine.begin() as conn:
                 random.random() >= 0.05
             )
         )
-        
+
         # for each employee
         for i in range(employee_offset, employee_offset + large_company_employees):
             employees[i].company = company_id
@@ -522,7 +532,7 @@ with engine.begin() as conn:
         for i in range(last_manager + 1, employee_offset + large_company_employees):
             employees[i].title_id = 3
             employees[i].level = random.randint(levels // 2 - 7, levels)
-        
+
         company_id += 1
         employee_offset += large_company_employees
 
@@ -568,7 +578,7 @@ with engine.begin() as conn:
     )
 
     print("employees inserted")
-    
+
     conn.execute(
         sqlalchemy.text(
             """
