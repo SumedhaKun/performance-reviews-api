@@ -1,0 +1,347 @@
+Code Review Findings
+
+✅ 1. Remove debug logging from production code
+
+get_performance_reviews() includes a print("hey") statement that will pollute server logs on every list request.
+
+File: src/api/routes/performance_reviews.py
+Line: 28
+
+✅ 2. DELETE performance review does not verify the row existed
+
+delete_performance_row() always returns HTTP 204, even when review_id does not exist.
+
+Manual testing showed that DELETE /performance_reviews/99999 returned 204 with an empty body. Callers cannot distinguish a successful delete from a no-op.
+
+Recommendation: Verify that the row exists before deleting, or check the affected row count and return 404 Not Found when appropriate.
+
+File: src/api/routes/performance_reviews.py
+Lines: 118-127
+
+✅ 3. Employee delete surfaces raw DB errors as HTTP 500
+
+Deleting an employee who has comments or performance reviews returns 500 Internal Server Error instead of a structured 409 Conflict, or a clearly defined cascading delete policy.
+
+This was tested on employee ID 9 after creating related records.
+
+Recommendation: Catch foreign-key constraint errors and return a structured 409 Conflict response, or implement a deliberate cascade strategy.
+
+File: src/api/routes/employees.py
+Lines: 143-173
+
+✅ 4. Employee create does not validate foreign keys before INSERT
+
+POST /employees/ with company_id: 99999 returns 500 Internal Server Error instead of 404 or 422 with a clear message.
+
+Recommendation: Validate foreign-key references before inserting, similar to how comments already validate employeeId and authorId.
+
+File: src/api/routes/employees.py
+Lines: 102-127
+
+❌ 5. Inconsistent HTTP status codes for resource creation
+
+POST /companies correctly returns 201 Created, but POST /employees/ returns 200 OK.
+
+Recommendation: Align create endpoints on 201 Created for consistency and REST expectations.
+
+Files: src/api/routes/companies.py, src/api/routes/employees.py
+
+✅ 6. Typo in route handler name
+
+get_tag() in titles.py should be renamed to get_title() for readability and searchability.
+
+File: src/api/routes/titles.py
+Line: 18
+
+✅ 7. Inconsistent delete URL for titles
+
+Titles are listed at /titles/ but deleted at /title/{title_id}/.
+
+The singular path and trailing slash are inconsistent with the plural convention used elsewhere and may be easy to misuse.
+
+Recommendation: Use a plural route such as DELETE /titles/{title_id}.
+
+File: src/api/routes/titles.py
+Line: 82
+
+✅ 8. Unused imports and dead code in performance reviews
+
+Field and field_validator are imported from Pydantic but never used.
+
+Recommendation: Either add validation, such as rating ranges or date ordering, or remove the unused imports.
+
+File: src/api/routes/performance_reviews.py
+Line: 2
+
+✅ 9. API_KEY configured in deployment but never enforced
+
+render.yaml defines API_KEY, but neither server.py nor any route checks it.
+
+Recommendation: Either implement authentication middleware or remove the unused environment variable to avoid a false sense of security.
+
+Files: render.yaml, src/api/server.py
+
+✅ 10. Default database credentials in source
+
+db.py falls back to postgresql+psycopg://myuser:mypassword@localhost/pr_database when POSTGRES_URI is unset.
+
+Recommendation: Fail fast in non-local environments so default credentials are never committed, assumed, or accidentally used in production.
+
+File: src/api/db.py
+Lines: 7-10
+
+❌ 11. No shared data-access layer; duplicated patterns
+
+Each route opens db.engine.begin() and runs raw SQL inline.
+
+Recommendation: Consider adding a thin repository module or SQLAlchemy models to reduce duplication, centralize error handling, and make foreign-key validation consistent across resources.
+
+Files: all files under src/api/routes/
+
+✅ 12. get_employee returns path param as id without re-reading from row
+
+The handler uses id=employee_id from the URL rather than id=employee.id from the query result.
+
+Today these match, but if the query ever changes, this could mask bugs.
+
+Recommendation: Prefer using id=employee.id.
+
+File: src/api/routes/employees.py
+Line: 55
+
+✅ 13. DELETE endpoints return bodies where spec says no response
+
+APISpec.md documents <No Response> for deletes on employees, performance reviews, and comments.
+
+However, the implementation returns Employee or Title on some deletes and 204 No Content on others.
+
+Recommendation: Standardize all delete endpoints on 204 No Content with no response body.
+
+Files: employees.py, titles.py, comments.py, performance_reviews.py
+
+❌ 14. No automated tests
+
+The repo has manual test markdown files but no pytest or similar automated test suite.
+
+Recommendation: Add a small integration test module to catch regressions such as delete behavior, filtering bugs, and foreign-key validation errors.
+
+✅ 15. Python version mismatch between pyproject.toml and Render
+
+pyproject.toml requires Python >=3.14, while render.yaml pins Python 3.12.9.
+
+This may cause local, development, and production environments to diverge.
+
+Recommendation: Align the Python versions across configuration files.
+
+Files: pyproject.toml, render.yaml
+
+----------------------------------------------------------------------------------------------------
+
+✅ - Remove unused Imports in performace_reviews.py
+✅ - Incosistent use of FastAPI tags
+❌ - Not using of CORS
+❌ - Incosistent use of status_codes in FastAPI  annotation (some routes have status code others don't)
+❌ - Use FastAPI status Module for status_code in router methods
+❌ - Inconsistent use of pydantic BaseModel for return types
+✅ - Companies Requires id for GET method but now company_id is returned in POST
+❌ - No Idempotent, can INSERT same company multiple times
+❌ - Use OF f-strings in .text() instead of parameter binding allows for SQL injection.
+✅ - Specify Return Using pydantics BaseModel
+
+  ### Reasoning
+  - Makes code more readable
+  - Enforces that output it correct and not malicious (to some extent)
+
+✅ - Use FastApi Prefix router
+
+  ### Example: comments.py file
+
+  ```python
+  router = APIRouter(prefix="/comments") # <- This becomes the prefix when using @router syntax in the comments.py file
+
+  @router.get('/')# This is relative to router defined above. This works for all HTTPS methods
+  def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
+  ...
+  ```
+
+  ### Reason:
+  - Less typing and makes longer routes names more manageble
+
+❌ - Early returns
+
+  ### Current code in comments.py
+
+  ```python
+  @router.get("/comment/")
+  def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
+    ...
+    if authorId is not None:
+        filters.append("commenter_id = :author_id")
+        params["author_id"] = authorId
+
+    with db.engine.begin() as connection:
+        if authorId is not None:
+            author_exists = connection.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT 1
+                    FROM employees
+                    WHERE id = :author_id
+                    """
+                ),
+                {"author_id": authorId},
+            ).one_or_none()
+
+            if author_exists is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Author employee {authorId} not found",
+                )
+  ```
+
+  ### Proposed Change
+
+  ```python
+  @router.get("/comment/")
+  def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
+    ...
+    if authorId is None:
+      raise HTTPException(
+          status_code=404,
+          detail=f"Author employee {authorId} not found",
+      )
+    ...
+    with db.engine.begin() as connection:
+      # if authorId is not None: # INFO: <- No longer needed if
+      author_exists = connection.execute(
+            sqlalchemy.text(
+              """
+              SELECT 1
+              FROM employees
+              WHERE id = :author_id
+              """
+            ),
+            {"author_id": authorId},
+            ).one_or_none() # NOTE: Keep .one_or_none() for safety
+
+      if author_exists is None:
+        raise HTTPException(
+          status_code=404,
+          detail=f"Author employee {authorId} not found",
+      )
+    ...
+  ```
+
+  ### Reasoning
+  - Removes unneccsary `is Not None` if statements
+  - More readable (In my opinion)
+
+------------------------------------------------------------------------------------------------------------
+
+✅ 1. Several endpoints are missing explicit `response_model` declarations, especially in `companies.py` and `performance_reviews.py`. Adding response models would make the API documentation clearer and make responses more predictable.
+
+✅ 2. `performance_reviews.py` imports `Field` and `field_validator`, but does not use them. 
+
+✅ 3. `PerformanceReview` is used as the request body for creating a review, but it does not include an `id` while the returned object does. A separate response model should be created for returned reviews.
+
+✅ 4. `companies.py` only defines a `NewCompany` model but does not define a full `Company` response model. This makes the company endpoint less consistent with resources like titles and employees.
+
+❌ 5. Some SQL queries return `.mappings()` while others return row objects directly. The project should use one style consistently.
+
+✅ 6. The title endpoints use list-style parameter passing for single inserts/deletes in some places.
+
+```python
+[{"tid": title_id}]
+```
+
+A plain dictionary would be clearer for single-row operations.
+
+✅ 7. The employee insert query uses shortened parameter names like `cid`, `fn`, `ln`, `tid`, and `dep`. More descriptive names like `company_id`, `first_name`, and `department` would help improve readability.
+
+✅ 8. Several route functions do not include docstrings explaining what they do. Adding short docstrings would improve the generated FastAPI docs.
+
+✅ 9. The comments endpoint checks whether the author exists and whether the employee exists using two separate queries. This could be simplified or moved into a helper function to reduce repetition.
+
+❌ 10. The comment formatting function manually maps database column names to API field names. This is useful, but the pattern is only used for comments. Similar formatting helpers should be used consistently across resources.
+
+✅ 11. `get_titles()` says “Retrieves all titles,” but `get_employees()` also says “Retrieves all employees” even though it only retrieves employees for one company. The docstring should describe the actual behavior.
+
+✅ 12. The code repeats similar `HTTPException(status_code=404, detail=...)` patterns across resources. A helper function could reduce repetition and keep error messages consistent.
+
+✅ 13. Several endpoints use trailing slashes inconsistently in their route decorators. This can cause small but annoying client-side issues
+
+❌ 14. Some endpoints return database values directly as dictionaries, while others manually construct Pydantic models. Project should choose one pattern and apply it consistently.
+
+
+------------------------------------------------------------------------------------------------------------
+
+❌ Single spec and inconsistent with itself. APISpec.md mixes plural and singular paths for the same resource like POST /comments/ vs GET /comment/ and DELETE /comments/{comment_id}), and mixes author vs authorId in places. 
+
+❌ There is some formatting inconsistency in the spec. Curly quotes and uneven indentation in APISpec.md make the file harder to diff, copy into tests, and check.
+
+✅ The debug output in a request handler, print("hey") in the performance reviews list handler is something I would change to be more informative and production ready. I would suggest using structured logging or removing it.
+
+✅ There are a couple of dead imports in performance_reviews.py that import Field and field_validator but do not use them. That can clutter reviews and code and is not necessary if you don’t need to use them.
+
+✅ There are some misleading names like get_tag for fetching a title by id and these misleading names can make navigation and code search harder. Naming and name matching can be helpful in creating readable code.
+
+❌ There are some inconsistent handler and return patterns. Some routes declare response_model and return Pydantic models (Employee, Title in employees.py and titles.py), while others return raw dicts / SQLAlchemy mappings from companies.py, performance_reviews.py, and comments.py (via dict(...) or .mappings() with no response_model). That split can make checking and testing harder. 
+
+✅ There is inconsistent DELETE behavior in code — Comment delete checks existence and can return 404; performance review delete always returns 204. I think it’d be better if the codebase follows one explicit pattern per resource family.
+
+✅ There are differing date usages. NewCompany uses Python’s date type for founded_date: Optional[date] = None. NewEmployee uses str for hire_date: str. PerformanceReview uses datetime for fields that the DB stores like review_date: datetime.
+
+✅ ExampleFlows.md is inconsistent and does not match the real API endpoints. It uses paths the server does not implement (POST /comments, GET /comments, GET /employees without company scope, GET /employees/{id}/reviews). Response examples use Subject vs subject, human dates like 4/20 instead of JSON date/datetime strings, and HTML. 
+
+❌ There are no written test files or test cases in the code testing endpoints.
+
+✅ Another discrepancy I found is that in some file tags are set, such as in employees.py you set tags, tags=["employees"] but in other files like companies.py and comments.py you don’t.
+
+❌ There are additionally some missing endpoints from v1 and v2 manual test results. Primarily, employees and titles are missing endpoint test results. 
+
+---------------------------------------------------------------------------------------------------------
+
+❌ 1. Can perform SQL injection in comments.py
+Block of code starting on Line 88 uses f-string formatting
+Instead use parameter binding
+✅ 2. Deletion in comments.py
+delete_comment permanently deletes row without checking anything
+Also a violation of User Story 12 as well
+Use something like transactional confirmations as a check
+✅ 3. Type casting in employees.py
+hire_date on line 95 is wrapped in a str()
+Instead use something built in like datetime (like you actually do use in performance_reviews.py)
+✅ 4. Inconsistent paths in employees.py
+Some paths end in a slash some don’t ex. /employees/{employee_id} vs. /employees/
+Might be helpful to standardize that consistently
+✅ 5. Phone number type in employees.py
+Phone is typed as int
+Could be an issue potentially with international numbers or if there are leading zeros
+One option could be to just change it to a str
+❌ 6. Variable naming in employees.py
+In get_employees assign database result to variable name employees
+Could become confusing because the router name is also employes
+Rename the result to something more descriptive
+✅ 7. Random print statement in performance_reviews.py
+Line 28: print(“hey”)
+I think can delete is there any use for that?
+❌ 8. Conversions in performance_reviews.py
+Line 71 and 115
+Don’t think you need to pass the .mappings().all() query results straight into a dict() - redundant
+Instead should be able to directly return the list of row dictionaries
+✅ 9. Out of bounds handling in performance_reviews.py
+overall_rating accepts any integer
+Perhaps add a range for it so you don’t get a rating that’s 274 or something
+✅ 10. Naming mismatch in titles.py
+Function starting on Line 18
+Path is named /titles/{title_id} so maybe rename the function def to be get_title instead of get_tag to keep it clearer
+✅ 11. Connection strings in db.py and env.py
+For example: block of code starting on line 7 in db.py:
+database_url = os.getenv(
+        "POSTGRES_URI",
+        "postgresql+psycopg://myuser:mypassword@localhost/pr_database",
+    )
+Would maybe change to something like: connection_url = config.get_settings().POSTGRES_URI so not relying on explicit plaintext connection string
+❌ 12. For loop inside database connection in both employees.py and titles.py
+Line 98 in employees and Line 55 in titles
+Run the loop outside of the database transaction (with db.engine.begin() as connection statement chunk)
