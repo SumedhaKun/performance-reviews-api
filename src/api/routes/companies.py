@@ -100,6 +100,22 @@ def get_department_stats(
         if company is None:
             raise HTTPException(status_code=404, detail="Company not found")
 
+        departments = connection.execute(
+            sqlalchemy.text(
+                """
+                SELECT 1
+                FROM employees
+                WHERE company_id = :company_id AND department = :department
+                LIMIT 1
+                """
+            ),
+            {"company_id": company_id, "department": department},
+        ).one_or_none()
+
+        if departments is None:
+            raise HTTPException(status_code=404, detail="Department not found")
+
+
         earliest_hire_date = connection.execute(
             sqlalchemy.text(
                 """
