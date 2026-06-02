@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import date
 import sqlalchemy
 from src.api.routes import auth
@@ -47,20 +48,40 @@ router = APIRouter(
     dependencies=[Depends(auth.get_api_key)],
 )
 
-@router.get("/", response_model=list[PerformanceReviewResponse])
-def get_performance_reviews():
+@router.get("/")
+def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Optional[int] = None):
     """Get all performance reviews."""
+    if reviewerId is None and employeeId is None:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one query parameter is required: reviewerId or employeeId",
+        )
+
+    filters = []
+    params = {}
+
+    if reviewerId is not None:
+        filters.append("reviewer_id = :reviewer_id")
+        params["reviewer_id"] = reviewerId
+
+    if employeeId is not None:
+        filters.append("employee_id = :employee_id")
+        params["employee_id"] = employeeId
+
+
     with db.engine.begin() as connection:
         performance_reviews = (
             connection.execute(
                 sqlalchemy.text(
-                    """
+                    f"""
                 SELECT id, employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 FROM performance_reviews
+                WHERE {" AND ".join(filters)}
+                ORDER BY review_date DESC, id DESC
                 """
-                ),
+                ), params
             )
             .mappings()
             .all()
@@ -276,9 +297,9 @@ def delete_performance_row(review_id: int):
     """Delete a performance review."""
     with db.engine.begin() as connection:
         ensure_resource_exists(
-            connection, 
-            "performance_reviews", 
-            review_id, 
+            connection,
+            "performance_reviews",
+            review_id,
             "Review not found"
         )
 
