@@ -1,5 +1,5 @@
 ## Fake Data Modeling
-
+[link to fake.py](https://github.com/SumedhaKun/performance-reviews-api/blob/main/fake.py)  \
 We generated 120,000 employees, 204 companies, ~1,800,000 appraisals, ~1,680,000 performance reviews, and 2,400,000 comments.
 These companies were split into 60 mini companies (with 60 employees), 122 small companies (with 200 employees), 16 medium companies (with 2000 employees), and 6 large companies (with 10000 employees). Due to the fact that there are less larger companies in the world, we thought there would be less larger companies using our service. However, the mini companies would have less of a reason to use our service. The attributes for the companies were simply generated using Faker and choosing randomly from our pre-set list of industries.
 
