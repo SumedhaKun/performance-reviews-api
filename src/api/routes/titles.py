@@ -60,7 +60,7 @@ def get_titles() -> List[Title]:
     return all_titles
 
 
-@router.post("/", response_model=Title)
+@router.post("/", response_model=Title, status_code=201)
 def add_title(new_title: NewTitle):
     """Create a title."""
     with db.engine.begin() as connection:

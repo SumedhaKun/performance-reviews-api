@@ -196,7 +196,7 @@ def get_employees(company_id: int) -> List[Employee]:
     return all_employees
 
 
-@router.post("/", response_model=Employee)
+@router.post("/", response_model=Employee, status_code=201)
 def add_employee(new_employee: NewEmployee):
     """Create an employee."""
     with db.engine.begin() as connection:

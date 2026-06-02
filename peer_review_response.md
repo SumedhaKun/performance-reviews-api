@@ -21,3 +21,4 @@
 - Move repeated existence checks and formatting into helpers
 - Align Python version requirement with Render
 - Remove API key debug print from auth.py
+- Standardize create endpoints on 201 status codes
