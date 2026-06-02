@@ -18,3 +18,4 @@
 - Standardize route trailing slash style to /smth/
 - Rename title route handler to get_title
 - Add explicit response models to remaining routes
+- Move repeated existence checks and formatting into helpers

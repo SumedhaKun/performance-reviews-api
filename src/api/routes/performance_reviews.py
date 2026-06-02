@@ -4,6 +4,7 @@ from datetime import date
 import sqlalchemy
 from src.api.routes import auth
 from src.api import db
+from src.api.routes.helpers import ensure_resource_exists
 
 
 class PerformanceReview(BaseModel):
@@ -274,19 +275,12 @@ def create_performance_review(performance_review: PerformanceReview):
 def delete_performance_row(review_id: int):
     """Delete a performance review."""
     with db.engine.begin() as connection:
-        review_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM performance_reviews
-                WHERE id = :review_id
-                """
-            ),
-            {"review_id": review_id},
-        ).one_or_none()
-
-        if review_exists is None:
-            raise HTTPException(status_code=404, detail="Review not found")
+        ensure_resource_exists(
+            connection, 
+            "performance_reviews", 
+            review_id, 
+            "Review not found"
+        )
 
         connection.execute(
             sqlalchemy.text("""

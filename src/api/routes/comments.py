@@ -7,6 +7,7 @@ from src.api.routes import auth
 import sqlalchemy
 
 from src.api import db
+from src.api.routes.helpers import ensure_resource_exists, format_comment
 
 
 class NewComment(BaseModel):
@@ -23,17 +24,6 @@ class Comment(BaseModel):
     comment: str
     authorId: int
     createdAt: datetime
-
-
-def format_comment(comment):
-    return {
-        "id": comment["id"],
-        "employeeId": comment["employee_id"],
-        "subject": comment["subject"],
-        "comment": comment["content"],
-        "authorId": comment["commenter_id"],
-        "createdAt": comment["created_at"],
-    }
 
 
 router = APIRouter(
@@ -65,40 +55,20 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
 
     with db.engine.begin() as connection:
         if authorId is not None:
-            author_exists = connection.execute(
-                sqlalchemy.text(
-                    """
-                    SELECT 1
-                    FROM employees
-                    WHERE id = :author_id
-                    """
-                ),
-                {"author_id": authorId},
-            ).one_or_none()
-
-            if author_exists is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Author employee {authorId} not found",
-                )
+            ensure_resource_exists(
+                connection,
+                "employees",
+                authorId,
+                f"Author employee {authorId} not found",
+            )
 
         if employeeId is not None:
-            employee_exists = connection.execute(
-                sqlalchemy.text(
-                    """
-                    SELECT 1
-                    FROM employees
-                    WHERE id = :employee_id
-                    """
-                ),
-                {"employee_id": employeeId},
-            ).one_or_none()
-
-            if employee_exists is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Employee {employeeId} not found",
-                )
+            ensure_resource_exists(
+                connection,
+                "employees",
+                employeeId,
+                f"Employee {employeeId} not found",
+            )
 
         comments = (
             connection.execute(
@@ -148,39 +118,18 @@ def get_comment(comment_id: int):
 def create_comment(new_comment: NewComment):
     """Create a comment."""
     with db.engine.begin() as connection:
-        employee_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM employees
-                WHERE id = :employee_id
-                """
-            ),
-            {"employee_id": new_comment.employeeId},
-        ).one_or_none()
-
-        if employee_exists is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Employee {new_comment.employeeId} not found",
-            )
-
-        author_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM employees
-                WHERE id = :author_id
-                """
-            ),
-            {"author_id": new_comment.authorId},
-        ).one_or_none()
-
-        if author_exists is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Author employee {new_comment.authorId} not found",
-            )
+        ensure_resource_exists(
+            connection,
+            "employees",
+            new_comment.employeeId,
+            f"Employee {new_comment.employeeId} not found",
+        )
+        ensure_resource_exists(
+            connection,
+            "employees",
+            new_comment.authorId,
+            f"Author employee {new_comment.authorId} not found",
+        )
 
         comment = (
             connection.execute(
@@ -219,19 +168,12 @@ def create_comment(new_comment: NewComment):
 def delete_comment(comment_id: int):
     """Delete a comment."""
     with db.engine.begin() as connection:
-        comment_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM comments
-                WHERE id = :comment_id
-                """
-            ),
-            {"comment_id": comment_id},
-        ).one_or_none()
-
-        if comment_exists is None:
-            raise HTTPException(status_code=404, detail="Comment not found")
+        ensure_resource_exists(
+            connection, 
+            "comments", 
+            comment_id, 
+            "Comment not found"
+        )
 
         connection.execute(
             sqlalchemy.text(

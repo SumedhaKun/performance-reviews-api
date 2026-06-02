@@ -5,6 +5,7 @@ from typing import List
 
 from src.api import db
 from src.api.routes import auth
+from src.api.routes.helpers import ensure_resource_exists
 
 
 class Title(BaseModel):
@@ -83,19 +84,12 @@ def add_title(new_title: NewTitle):
 def delete_title(title_id: int):
     """Delete a title."""
     with db.engine.begin() as connection:
-        title_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM titles
-                WHERE id = :title_id
-                """
-            ),
-            {"title_id": title_id},
-        ).one_or_none()
-
-        if title_exists is None:
-            raise HTTPException(status_code=404, detail="Title not found")
+        ensure_resource_exists(
+            connection, 
+            "titles", 
+            title_id, 
+            "Title not found"
+        )
 
         connection.execute(
             sqlalchemy.text(

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from src.api import db
 from src.api.routes import auth
+from src.api.routes.helpers import ensure_resource_exists
 
 
 class Employee(BaseModel):
@@ -199,33 +200,18 @@ def get_employees(company_id: int) -> List[Employee]:
 def add_employee(new_employee: NewEmployee):
     """Create an employee."""
     with db.engine.begin() as connection:
-        company_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM companies
-                WHERE id = :company_id
-                """
-            ),
-            {"company_id": new_employee.company_id},
-        ).one_or_none()
-
-        if company_exists is None:
-            raise HTTPException(status_code=404, detail="Company not found")
-
-        title_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM titles
-                WHERE id = :title_id
-                """
-            ),
-            {"title_id": new_employee.title_id},
-        ).one_or_none()
-
-        if title_exists is None:
-            raise HTTPException(status_code=404, detail="Title not found")
+        ensure_resource_exists(
+            connection, 
+            "companies", 
+            new_employee.company_id, 
+            "Company not found"
+        )
+        ensure_resource_exists(
+            connection, 
+            "titles", 
+            new_employee.title_id, 
+            "Title not found"
+        )
 
         employee = connection.execute(
             sqlalchemy.text(
@@ -259,19 +245,12 @@ def add_employee(new_employee: NewEmployee):
 def delete_employee(employee_id: int):
     """Delete an employee."""
     with db.engine.begin() as connection:
-        employee_exists = connection.execute(
-            sqlalchemy.text(
-                """
-                SELECT 1
-                FROM employees
-                WHERE id = :employee_id
-                """
-            ),
-            {"employee_id": employee_id},
-        ).one_or_none()
-
-        if employee_exists is None:
-            raise HTTPException(status_code=404, detail="Employee not found")
+        ensure_resource_exists(
+            connection, 
+            "employees", 
+            employee_id, 
+            "Employee not found"
+        )
 
         connection.execute(
             sqlalchemy.text(
