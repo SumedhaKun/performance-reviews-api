@@ -17,6 +17,15 @@ class NewCompany(BaseModel):
     active: bool = True
 
 
+class Company(BaseModel):
+    id: int
+    name: str
+    industry: str
+    headquarters_location: str
+    founded_date: Optional[date] = None
+    active: bool
+
+
 class DepartmentStats(BaseModel):
     company_id: int
     department: str
@@ -39,7 +48,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{company_id}/")
+@router.get("/{company_id}/", response_model=Company)
 def get_company(company_id: int):
     """Get one company by id."""
     with db.engine.begin() as connection:
@@ -182,7 +191,7 @@ def get_department_stats(
     )
 
 
-@router.post("/", status_code=201)
+@router.post("/", response_model=Company, status_code=201)
 def create_company(new_company: NewCompany):
     """Create a company."""
     with db.engine.begin() as connection:

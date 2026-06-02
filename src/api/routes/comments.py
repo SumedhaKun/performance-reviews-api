@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,6 +14,15 @@ class NewComment(BaseModel):
     subject: str
     comment: str
     authorId: int
+
+
+class Comment(BaseModel):
+    id: int
+    employeeId: int
+    subject: str
+    comment: str
+    authorId: int
+    createdAt: datetime
 
 
 def format_comment(comment):
@@ -33,7 +43,7 @@ router = APIRouter(
 )
 
 
-@router.get("/")
+@router.get("/", response_model=list[Comment])
 def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
     """Get comments by author or employee."""
     if authorId is None and employeeId is None:
@@ -109,7 +119,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
     return [format_comment(comment) for comment in comments]
 
 
-@router.get("/{comment_id}/")
+@router.get("/{comment_id}/", response_model=Comment)
 def get_comment(comment_id: int):
     """Get one comment by id."""
     with db.engine.begin() as connection:
@@ -134,7 +144,7 @@ def get_comment(comment_id: int):
     return format_comment(comment)
 
 
-@router.post("/", status_code=201)
+@router.post("/", response_model=Comment, status_code=201)
 def create_comment(new_comment: NewComment):
     """Create a comment."""
     with db.engine.begin() as connection:

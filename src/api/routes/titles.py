@@ -23,7 +23,7 @@ router = APIRouter(
 
 
 @router.get("/{title_id}/")
-def get_tag(title_id: int):
+def get_title(title_id: int):
     """Get one title by id."""
     with db.engine.begin() as connection:
         title = connection.execute(

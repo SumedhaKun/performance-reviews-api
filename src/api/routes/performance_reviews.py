@@ -35,13 +35,18 @@ class PerformanceReviewDraft(BaseModel):
     title_change: int | None = None
     level_change: int | None = None
 
+
+class PerformanceReviewResponse(PerformanceReview):
+    id: int
+
+
 router = APIRouter(
     prefix="/performance_reviews",
     tags=["performance_reviews"],
     dependencies=[Depends(auth.get_api_key)],
 )
 
-@router.get("/")
+@router.get("/", response_model=list[PerformanceReviewResponse])
 def get_performance_reviews():
     """Get all performance reviews."""
     with db.engine.begin() as connection:
@@ -63,7 +68,7 @@ def get_performance_reviews():
     return performance_reviews
 
 
-@router.get("/{review_id}/")
+@router.get("/{review_id}/", response_model=PerformanceReviewResponse)
 def get_performance_review(review_id: int):
     """Get one performance review by id."""
     with db.engine.begin() as connection:
@@ -220,7 +225,7 @@ def submit_draft(draft_id: int):
 
     return {"id": review_id}
 
-@router.post("/", status_code=201)
+@router.post("/", response_model=PerformanceReviewResponse, status_code=201)
 def create_performance_review(performance_review: PerformanceReview):
     """Create a performance review."""
     with db.engine.begin() as connection:
@@ -292,7 +297,7 @@ def delete_performance_row(review_id: int):
         )
 
 
-@router.patch("/{review_id}/", status_code=200)
+@router.patch("/{review_id}/", response_model=PerformanceReviewResponse, status_code=200,)
 def patch_performance_review(
     review_id: int,
     employee_id: int | None = None,

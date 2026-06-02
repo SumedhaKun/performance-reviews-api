@@ -16,3 +16,5 @@
 - Use date consistently across employee, company, and review date fields
 - Fix misleading docstrings and add missing route docstrings
 - Standardize route trailing slash style to /smth/
+- Rename title route handler to get_title
+- Add explicit response models to remaining routes
