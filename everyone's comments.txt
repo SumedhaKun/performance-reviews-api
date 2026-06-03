@@ -143,11 +143,11 @@ Files: pyproject.toml, render.yaml
 💛 - Not using of CORS
 **We do not need CORS because this API is not currently connected to a frontend. We used CORS in Potion Shop to connect to the Vercel frontend, but this project does not have that setup.**
 ✅ - Incosistent use of status_codes in FastAPI  annotation (some routes have status code others don't)
-❌ - Use FastAPI status Module for status_code in router methods
+✅ - Use FastAPI status Module for status_code in router methods
 ❌ - Inconsistent use of pydantic BaseModel for return types
 ✅ - Companies Requires id for GET method but now company_id is returned in POST
 ❌ - No Idempotent, can INSERT same company multiple times
-❌ - Use OF f-strings in .text() instead of parameter binding allows for SQL injection.
+✅ - Use OF f-strings in .text() instead of parameter binding allows for SQL injection.
 ✅ - Specify Return Using pydantics BaseModel
 
   ### Reasoning
@@ -169,7 +169,7 @@ Files: pyproject.toml, render.yaml
   ### Reason:
   - Less typing and makes longer routes names more manageble
 
-❌ - Early returns
+💛 - Early returns
 
   ### Current code in comments.py
 
@@ -238,6 +238,9 @@ Files: pyproject.toml, render.yaml
   - Removes unneccsary `is Not None` if statements
   - More readable (In my opinion)
 
+  ### Response
+  **We are not making this change because we are adding short-circuiting validation and want to keep the current pattern. Early validation checks before entering the database connection block provide better performance and clearer error handling.**
+
 ------------------------------------------------------------------------------------------------------------
 
 ✅ 1. Several endpoints are missing explicit `response_model` declarations, especially in `companies.py` and `performance_reviews.py`. Adding response models would make the API documentation clearer and make responses more predictable.
@@ -248,7 +251,7 @@ Files: pyproject.toml, render.yaml
 
 ✅ 4. `companies.py` only defines a `NewCompany` model but does not define a full `Company` response model. This makes the company endpoint less consistent with resources like titles and employees.
 
-❌ 5. Some SQL queries return `.mappings()` while others return row objects directly. The project should use one style consistently.
+✅ 5. Some SQL queries return `.mappings()` while others return row objects directly. The project should use one style consistently.
 
 ✅ 6. The title endpoints use list-style parameter passing for single inserts/deletes in some places.
 
@@ -303,7 +306,7 @@ A plain dictionary would be clearer for single-row operations.
 
 ---------------------------------------------------------------------------------------------------------
 
-❌ 1. Can perform SQL injection in comments.py
+✅ 1. Can perform SQL injection in comments.py
 Block of code starting on Line 88 uses f-string formatting
 Instead use parameter binding
 ✅ 2. Deletion in comments.py

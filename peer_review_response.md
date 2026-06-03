@@ -22,3 +22,5 @@
 - Align Python version requirement with Render
 - Remove API key debug print from auth.py
 - Standardize create endpoints on 201 status codes
+- Fix SQL injection vulnerability in comments.py by removing f-string formatting in SQL query
+- Standardize SQL query return patterns to use .mappings() with dict() conversion consistently

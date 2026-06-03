@@ -16,11 +16,13 @@ def ensure_resource_exists(connection, table_name: str, resource_id: int, detail
         raise ValueError(f"Unsupported resource table: {table_name}")
 
     resource_exists = connection.execute(
-        sqlalchemy.text(f"""
+        sqlalchemy.text(
+            """
             SELECT 1
-            FROM {table_name}
+            FROM """ + table_name + """
             WHERE id = :resource_id
-        """),
+        """
+        ),
         {"resource_id": resource_id},
     ).one_or_none()
 

@@ -95,11 +95,12 @@ def get_department_stats(
                 """
             ),
             {"company_id": company_id},
-        ).one_or_none()
+        ).mappings().one_or_none()
 
         if company is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
+        company_dict = dict(company)
         departments = connection.execute(
             sqlalchemy.text(
                 """
@@ -131,7 +132,7 @@ def get_department_stats(
             },
         ).scalar_one()
 
-        effective_start_date = start_date or company.founded_date or earliest_hire_date
+        effective_start_date = start_date or company_dict["founded_date"] or earliest_hire_date
         effective_end_date = end_date or date.today()
 
         if (

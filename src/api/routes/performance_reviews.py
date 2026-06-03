@@ -73,40 +73,24 @@ def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Option
 
 
     with db.engine.begin() as connection:
+        where_clause = " AND ".join(filters)
         performance_reviews = (
             connection.execute(
                 sqlalchemy.text(
-                    f"""
+                    """
                 SELECT id, employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 FROM performance_reviews
-                WHERE {" AND ".join(filters)}
+                WHERE """ + where_clause + """
                 ORDER BY review_date DESC, id DESC
                 """
                 ), params
             )
+            .mappings()
         )
-        
-        prs = [
-            PerformanceReviewResponse(
-                id = performance_review.id,
-                employee_id = performance_review.employee_id,
-                review_period_start = performance_review.review_period_start,
-                review_period_end = performance_review.review_period_end,
-                review_date = performance_review.review_date,
-                reviewer_id = performance_review.reviewer_id,
-                overall_rating = performance_review.overall_rating,
-                category_1 = performance_review.category_1,
-                category_2 = performance_review.category_2,
-                category_3 = performance_review.category_3,
-                comment = performance_review.comment,
-                title_change = performance_review.title_change,
-                level_change = performance_review.level_change
-            ) for performance_review in performance_reviews
-        ]
 
-    return prs
+    return [dict(review) for review in performance_reviews]
 
 @router.get("/{review_id}/", response_model=PerformanceReviewResponse, status_code=200)
 def get_performance_review(review_id: int):
@@ -448,16 +432,29 @@ def patch_performance_review(
     if not update_fields:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
 
+    allowed_columns = {
+        "employee_id", "review_period_start", "review_period_end",
+        "review_date", "reviewer_id", "overall_rating", "category_1",
+        "category_2", "category_3", "comment", "title_change", "level_change"
+    }
+    
+    # Validate that all keys are allowed columns
+    for key in update_fields.keys():
+        if key not in allowed_columns:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid field: {key}")
+
     set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
 
-    query = sqlalchemy.text(f"""
+    query = sqlalchemy.text(
+        """
         UPDATE performance_reviews
-        SET {set_clause}
+        SET """ + set_clause + """
         WHERE id = :review_id
         RETURNING id, employee_id, review_period_start, review_period_end,
             review_date, reviewer_id, overall_rating, category_1, category_2,
             category_3, comment, title_change, level_change
-    """)
+    """
+    )
 
     update_fields["review_id"] = review_id
 

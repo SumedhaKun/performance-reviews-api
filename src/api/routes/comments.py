@@ -70,13 +70,14 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
                 f"Employee {employeeId} not found",
             )
 
+        where_clause = " AND ".join(filters)
         comments = (
             connection.execute(
                 sqlalchemy.text(
-                    f"""
+                    """
                 SELECT id, employee_id, subject, commenter_id, content, created_at
                 FROM comments
-                WHERE {" AND ".join(filters)}
+                WHERE """ + where_clause + """
                 ORDER BY created_at DESC, id DESC
                 """
                 ),
@@ -86,7 +87,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
             .all()
         )
 
-    return [format_comment(comment) for comment in comments]
+    return [format_comment(dict(comment)) for comment in comments]
 
 
 @router.get("/{comment_id}/", response_model=Comment, status_code=status.HTTP_200_OK)
