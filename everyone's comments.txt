@@ -91,13 +91,11 @@ File: src/api/db.py
 Lines: 7-10
 
 💛 11. No shared data-access layer; duplicated patterns
-**We are not doing this because it is unnecessary for the current scope.**
-
 Each route opens db.engine.begin() and runs raw SQL inline.
-
 Recommendation: Consider adding a thin repository module or SQLAlchemy models to reduce duplication, centralize error handling, and make foreign-key validation consistent across resources.
-
 Files: all files under src/api/routes/
+
+**We are not doing this because it is unnecessary for the current scope.**
 
 ✅ 12. get_employee returns path param as id without re-reading from row
 
@@ -146,7 +144,8 @@ Files: pyproject.toml, render.yaml
 ✅ - Use FastAPI status Module for status_code in router methods
 ❌ - Inconsistent use of pydantic BaseModel for return types
 ✅ - Companies Requires id for GET method but now company_id is returned in POST
-❌ - No Idempotent, can INSERT same company multiple times
+💛 - No Idempotent, can INSERT same company multiple times
+**We know that repeated POST requests can create duplicate company rows. For this project, we are keeping company creation as a normal create operation because the API spec does not require company names to be unique or POST /companies to be idempotent. If duplicate prevention becomes a requirement, we would add a uniqueness rule and return the existing company or a clear conflict response.**
 ✅ - Use OF f-strings in .text() instead of parameter binding allows for SQL injection.
 ✅ - Specify Return Using pydantics BaseModel
 
@@ -267,7 +266,9 @@ A plain dictionary would be clearer for single-row operations.
 
 ✅ 9. The comments endpoint checks whether the author exists and whether the employee exists using two separate queries. This could be simplified or moved into a helper function to reduce repetition.
 
-❌ 10. The comment formatting function manually maps database column names to API field names. This is useful, but the pattern is only used for comments. Similar formatting helpers should be used consistently across resources.
+💛 10. The comment formatting function manually maps database column names to API field names. This is useful, but the pattern is only used for comments. Similar formatting helpers should be used consistently across resources.
+
+**Response**: Shared formatting helpers are useful when database field names and API field names are different. In this codebase, comments need a special formatter because fields like `employee_id`, `commenter_id`, and `created_at` are returned as `employeeId`, `authorId`, and `createdAt` in the API. Most other resources already use the same field names in the database and response models, so adding separate formatting helpers for each one would add extra code without changing behavior. We are keeping the comment formatter and using direct dictionary conversion for resources that do not need field renaming.
 
 ✅ 11. `get_titles()` says “Retrieves all titles,” but `get_employees()` also says “Retrieves all employees” even though it only retrieves employees for one company. The docstring should describe the actual behavior.
 
@@ -282,11 +283,11 @@ A plain dictionary would be clearer for single-row operations.
 
 💛 Single spec and inconsistent with itself. APISpec.md mixes plural and singular paths for the same resource like POST /comments/ vs GET /comment/ and DELETE /comments/{comment_id}), and mixes author vs authorId in places.
 
-**Response**: We appreciate this feedback and will keep it in mind for future API specification updates. Consistency in path naming conventions and field naming will be prioritized in upcoming revisions. 
+**Response**: Will keep it in mind for future API specification updates. Consistency in path naming conventions and field naming will be prioritized in upcoming revisions. 
 
 💛 There is some formatting inconsistency in the spec. Curly quotes and uneven indentation in APISpec.md make the file harder to diff, copy into tests, and check.
 
-**Response**: We appreciate this feedback and will take it into consideration for future API specifications. We will ensure proper formatting standards and consistent indentation in upcoming documentation updates.
+**Response**: Will take it into consideration for future API specifications. We will ensure proper formatting standards and consistent indentation in upcoming documentation updates.
 
 ✅ The debug output in a request handler, print("hey") in the performance reviews list handler is something I would change to be more informative and production ready. I would suggest using structured logging or removing it.
 
@@ -306,7 +307,9 @@ A plain dictionary would be clearer for single-row operations.
 
 ✅ Another discrepancy I found is that in some file tags are set, such as in employees.py you set tags, tags=["employees"] but in other files like companies.py and comments.py you don’t.
 
-❌ There are additionally some missing endpoints from v1 and v2 manual test results. Primarily, employees and titles are missing endpoint test results. 
+💛 There are additionally some missing endpoints from v1 and v2 manual test results. Primarily, employees and titles are missing endpoint test results. 
+
+**Response**: Thank you for pointing this out. You are right that the manual test result files do not fully cover the employee and title endpoints. We currently have some employee usage in the v2 workflow, but it is mostly setup for comments rather than complete endpoint testing. We will add manual test results for the missing employee and title routes so the documentation better reflects the API coverage.
 
 ---------------------------------------------------------------------------------------------------------
 
@@ -339,7 +342,7 @@ Line 71 and 115
 Don't think you need to pass the .mappings().all() query results straight into a dict() - redundant
 Instead should be able to directly return the list of row dictionaries
 
-**Response**: We appreciate this feedback. We chose to keep the explicit `dict()` conversion for consistency across the codebase, as recommended by other code review comments. This ensures all SQL mappings are uniformly converted to dictionaries before being used or returned, which improves code consistency and predictability.
+**Response**: We chose to keep the explicit `dict()` conversion for consistency across the codebase, as recommended by other code review comments. This ensures all SQL mappings are uniformly converted to dictionaries before being used or returned, which improves code consistency and predictability.
 ✅ 9. Out of bounds handling in performance_reviews.py
 overall_rating accepts any integer
 Perhaps add a range for it so you don’t get a rating that’s 274 or something
