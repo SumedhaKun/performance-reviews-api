@@ -14,7 +14,6 @@ class Settings:
     POSTGRES_URI: str | None = os.getenv("POSTGRES_URI")
 
     def __init__(self):
-        print(self.API_KEY)
         if not self.API_KEY:
             raise ValueError("API_KEY is missing in the environment variables.")
         if not self.POSTGRES_URI:

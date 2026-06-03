@@ -33,7 +33,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[Comment])
+@router.get("/", response_model=list[Comment], status_code=status.HTTP_200_OK)
 def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = None):
     """Get comments by author or employee."""
     if authorId is None and employeeId is None:

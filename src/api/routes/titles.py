@@ -23,7 +23,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{title_id}/", response_model=Title)
+@router.get("/{title_id}/", response_model=Title, status_code=status.HTTP_200_OK)
 def get_title(title_id: int):
     """Get one title by id."""
     with db.engine.begin() as connection:
@@ -44,7 +44,7 @@ def get_title(title_id: int):
     return dict(title)
 
 
-@router.get("/", response_model=List[Title])
+@router.get("/", response_model=List[Title], status_code=status.HTTP_200_OK)
 def get_titles() -> List[Title]:
     """Get all titles."""
     with db.engine.begin() as connection:
