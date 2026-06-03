@@ -54,6 +54,9 @@ class EmployeeStats(BaseModel):
     level_change_count: int
     level_change_rate: float
 
+class SuccessResponse(BaseModel):
+    success: bool
+
 
 router = APIRouter(
     prefix="/employees",
@@ -299,3 +302,86 @@ def delete_employee(employee_id: int):
             ),
             {"employee_id": employee_id},
         )
+
+@router.patch(
+    "/employees/{employee_id}/level/", response_model=SuccessResponse, status_code=status.HTTP_200_OK
+)
+def update_level(
+    employee_id: int,
+    new_level: int
+):
+    with db.engine.begin() as connection:
+        ensure_resource_exists(
+            connection,
+            "employees",
+            employee_id,
+            "Employee not found"
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                UPDATE employees SET level = :new_level WHERE id = :eid
+                """
+            ), [{"new_level": new_level, "eid": employee_id}]
+        )
+
+    return {"success": True}
+
+@router.patch(
+    "/employees/{employee_id}/title/", response_model=SuccessResponse, status_code=status.HTTP_200_OK
+)
+def update_title(
+    employee_id: int,
+    new_title_id: int
+):
+    with db.engine.begin() as connection:
+        ensure_resource_exists(
+            connection,
+            "employees",
+            employee_id,
+            "Employee not found"
+        )
+
+        ensure_resource_exists(
+            connection,
+            "titles",
+            new_title_id,
+            "Title not found"
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                UPDATE employees SET title_id = :new_title WHERE id = :eid
+                """
+            ), [{"new_title": new_title_id, "eid": employee_id}]
+        )
+
+    return {"success": True}
+
+
+@router.patch(
+    "/employees/{employee_id}/current_employee/", response_model=SuccessResponse, status_code=status.HTTP_200_OK
+)
+def update_activity(
+    employee_id: int,
+    current_employee: bool
+):
+    with db.engine.begin() as connection:
+        ensure_resource_exists(
+            connection,
+            "employees",
+            employee_id,
+            "Employee not found"
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
+                UPDATE employees SET current_employee = :a WHERE id = :eid
+                """
+            ), [{"a": current_employee, "eid": employee_id}]
+        )
+
+    return {"success": True}
