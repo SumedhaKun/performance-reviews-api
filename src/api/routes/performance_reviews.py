@@ -1,9 +1,8 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
 import sqlalchemy
-from fastapi import status
 from src.api.routes import auth
 from src.api import db
 from src.api.routes.helpers import ensure_resource_exists
@@ -57,7 +56,7 @@ def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Option
     """Get all performance reviews."""
     if reviewerId is None and employeeId is None:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one query parameter is required: reviewerId or employeeId",
         )
 
@@ -130,7 +129,7 @@ def get_performance_review(review_id: int):
         )
 
     if performance_review is None:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
     return PerformanceReviewResponse(
         id = performance_review.id,
@@ -148,7 +147,7 @@ def get_performance_review(review_id: int):
         level_change = performance_review.level_change
     )
 
-@router.post("/draft/", response_model=IdResponse, status_code=201)
+@router.post("/draft", status_code=201)
 def create_draft(performance_review: PerformanceReviewDraft):
     with db.engine.begin() as connection:
         ensure_resource_exists(
@@ -273,7 +272,7 @@ def update_draft(
     return {"success": True}
 
 
-@router.post("/submit/{draft_id}/", response_model=IdResponse, status_code=201)
+@router.post("/submit/{draft_id}", status_code=201)
 def submit_draft(draft_id: int):
     with db.engine.begin() as connection:
         draft = connection.execute(
@@ -333,7 +332,7 @@ def submit_draft(draft_id: int):
 
     return IdResponse(id=review_id)
 
-@router.post("/", response_model=PerformanceReviewResponse, status_code=201)
+@router.post("/", response_model=PerformanceReviewResponse, status_code=status.HTTP_201_CREATED)
 def create_performance_review(performance_review: PerformanceReview):
     """Create a performance review."""
     with db.engine.begin() as connection:
@@ -391,7 +390,7 @@ def create_performance_review(performance_review: PerformanceReview):
     )
 
 
-@router.delete("/{review_id}/", status_code=204)
+@router.delete("/{review_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_performance_row(review_id: int):
     """Delete a performance review."""
     with db.engine.begin() as connection:
@@ -411,7 +410,7 @@ def delete_performance_row(review_id: int):
         )
 
 
-@router.patch("/{review_id}/", response_model=PerformanceReviewResponse, status_code=200,)
+@router.patch("/{review_id}/", response_model=PerformanceReviewResponse, status_code=status.HTTP_200_OK,)
 def patch_performance_review(
     review_id: int,
     new_review: PerformanceReviewDraft
@@ -447,7 +446,7 @@ def patch_performance_review(
     update_fields = {k: v for k, v in update_fields.items() if v is not None}
 
     if not update_fields:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
 
     set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
 
@@ -482,7 +481,7 @@ def patch_performance_review(
         )
 
     if updated_review is None:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
     return PerformanceReviewResponse(
         id = updated_review.id,

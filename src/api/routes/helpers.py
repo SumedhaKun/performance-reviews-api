@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import sqlalchemy
 
 
@@ -25,7 +25,7 @@ def ensure_resource_exists(connection, table_name: str, resource_id: int, detail
     ).one_or_none()
 
     if resource_exists is None:
-        raise HTTPException(status_code=404, detail=detail)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
 
 
 def format_comment(comment):

@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, status
 import sqlalchemy
 from pydantic import BaseModel, Field
 
@@ -61,7 +61,7 @@ router = APIRouter(
     dependencies=[Depends(auth.get_api_key)],
 )
 
-@router.get("/{employee_id}/", response_model=Employee)
+@router.get("/{employee_id}/", response_model=Employee,status_code=status.HTTP_200_OK)
 def get_employee(employee_id: int):
     """Get one employee by id."""
     with db.engine.begin() as connection:
@@ -79,14 +79,14 @@ def get_employee(employee_id: int):
         ).mappings().one_or_none()
 
     if employee is None:
-        raise HTTPException(status_code=404, detail="Employee not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
 
     return dict(employee)
 
 
 @router.get(
     "/{employee_id}/stats/",
-    response_model=EmployeeStats,
+    response_model=EmployeeStats, status_code=status.HTTP_200_OK
 )
 def get_employee_stats(
     employee_id: int,
@@ -108,7 +108,7 @@ def get_employee_stats(
         ).mappings().one_or_none()
 
         if employee is None:
-            raise HTTPException(status_code=404, detail="Employee not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
 
         effective_start_date = start_date or employee["hire_date"]
         effective_end_date = end_date or date.today()
@@ -118,7 +118,7 @@ def get_employee_stats(
             and effective_start_date > effective_end_date
         ):
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="start_date must be on or before end_date",
             )
 
@@ -177,7 +177,7 @@ def get_employee_stats(
 
 
 @router.get(
-    "/company/{company_id}/", response_model=List[Employee]
+    "/company/{company_id}/", response_model=List[Employee], status_code=status.HTTP_200_OK
 )
 def get_employees(company_id: int) -> List[Employee]:
     """Get employees for one company."""
@@ -196,7 +196,7 @@ def get_employees(company_id: int) -> List[Employee]:
     return all_employees
 
 
-@router.post("/", response_model=Employee, status_code=201)
+@router.post("/", response_model=Employee, status_code=status.HTTP_201_CREATED)
 def add_employee(new_employee: NewEmployee):
     """Create an employee."""
     with db.engine.begin() as connection:
@@ -241,7 +241,7 @@ def add_employee(new_employee: NewEmployee):
     return dict(employee)
 
 
-@router.delete("/{employee_id}/", status_code=204)
+@router.delete("/{employee_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee(employee_id: int):
     """Delete an employee."""
     with db.engine.begin() as connection:

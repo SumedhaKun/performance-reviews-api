@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from src.api.routes import auth
 import sqlalchemy
@@ -38,7 +38,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
     """Get comments by author or employee."""
     if authorId is None and employeeId is None:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="At least one query parameter is required: authorId or employeeId",
         )
 
@@ -89,7 +89,7 @@ def get_comments(authorId: Optional[int] = None, employeeId: Optional[int] = Non
     return [format_comment(comment) for comment in comments]
 
 
-@router.get("/{comment_id}/", response_model=Comment)
+@router.get("/{comment_id}/", response_model=Comment, status_code=status.HTTP_200_OK)
 def get_comment(comment_id: int):
     """Get one comment by id."""
     with db.engine.begin() as connection:
@@ -109,12 +109,12 @@ def get_comment(comment_id: int):
         )
 
     if comment is None:
-        raise HTTPException(status_code=404, detail="Comment not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Comment not found")
 
     return format_comment(comment)
 
 
-@router.post("/", response_model=Comment, status_code=201)
+@router.post("/", response_model=Comment, status_code=status.HTTP_201_CREATED)
 def create_comment(new_comment: NewComment):
     """Create a comment."""
     with db.engine.begin() as connection:
@@ -164,7 +164,7 @@ def create_comment(new_comment: NewComment):
     return format_comment(comment)
 
 
-@router.delete("/{comment_id}/", status_code=204)
+@router.delete("/{comment_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_comment(comment_id: int):
     """Delete a comment."""
     with db.engine.begin() as connection:

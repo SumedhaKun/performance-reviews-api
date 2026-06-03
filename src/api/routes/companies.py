@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, status
 from pydantic import BaseModel
 import sqlalchemy
 
@@ -48,7 +48,7 @@ router = APIRouter(
 )
 
 
-@router.get("/{company_id}/", response_model=Company)
+@router.get("/{company_id}/", response_model=Company, status_code=status.HTTP_200_OK)
 def get_company(company_id: int):
     """Get one company by id."""
     with db.engine.begin() as connection:
@@ -69,14 +69,14 @@ def get_company(company_id: int):
         )
 
     if company is None:
-        raise HTTPException(status_code=404, detail="Company not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
     return dict(company)
 
 
 @router.get(
     "/{company_id}/departments/{department}/stats/",
-    response_model=DepartmentStats,
+    response_model=DepartmentStats, status_code=status.HTTP_200_OK
 )
 def get_department_stats(
     company_id: int,
@@ -98,7 +98,7 @@ def get_department_stats(
         ).one_or_none()
 
         if company is None:
-            raise HTTPException(status_code=404, detail="Company not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
         departments = connection.execute(
             sqlalchemy.text(
@@ -113,7 +113,7 @@ def get_department_stats(
         ).one_or_none()
 
         if departments is None:
-            raise HTTPException(status_code=404, detail="Department not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
 
 
         earliest_hire_date = connection.execute(
@@ -139,7 +139,7 @@ def get_department_stats(
             and effective_start_date > effective_end_date
         ):
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="start_date must be on or before end_date",
             )
 
@@ -184,7 +184,7 @@ def get_department_stats(
         )
 
     if stats["employee_count"] == 0:
-        raise HTTPException(status_code=404, detail="Department not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
 
     total_reviews = stats["total_reviews"]
     title_change_count = stats["title_change_count"]
@@ -207,7 +207,7 @@ def get_department_stats(
     )
 
 
-@router.post("/", response_model=Company, status_code=201)
+@router.post("/", response_model=Company, status_code=status.HTTP_201_CREATED)
 def create_company(new_company: NewCompany):
     """Create a company."""
     with db.engine.begin() as connection:

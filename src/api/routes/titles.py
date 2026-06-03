@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 import sqlalchemy
 from pydantic import BaseModel
 from typing import List
@@ -39,7 +39,7 @@ def get_title(title_id: int):
         ).mappings().one_or_none()
 
     if title is None:
-        raise HTTPException(status_code=404, detail="Title not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Title not found")
 
     return dict(title)
 
@@ -60,7 +60,7 @@ def get_titles() -> List[Title]:
     return all_titles
 
 
-@router.post("/", response_model=Title, status_code=201)
+@router.post("/", response_model=Title, status_code=status.HTTP_201_CREATED)
 def add_title(new_title: NewTitle):
     """Create a title."""
     with db.engine.begin() as connection:
@@ -80,7 +80,7 @@ def add_title(new_title: NewTitle):
     return dict(title)
 
 
-@router.delete("/{title_id}/", status_code=204)
+@router.delete("/{title_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_title(title_id: int):
     """Delete a title."""
     with db.engine.begin() as connection:

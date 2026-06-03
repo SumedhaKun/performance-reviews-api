@@ -142,7 +142,7 @@ Files: pyproject.toml, render.yaml
 ✅ - Incosistent use of FastAPI tags
 💛 - Not using of CORS
 **We do not need CORS because this API is not currently connected to a frontend. We used CORS in Potion Shop to connect to the Vercel frontend, but this project does not have that setup.**
-❌ - Incosistent use of status_codes in FastAPI  annotation (some routes have status code others don't)
+✅ - Incosistent use of status_codes in FastAPI  annotation (some routes have status code others don't)
 ❌ - Use FastAPI status Module for status_code in router methods
 ❌ - Inconsistent use of pydantic BaseModel for return types
 ✅ - Companies Requires id for GET method but now company_id is returned in POST
