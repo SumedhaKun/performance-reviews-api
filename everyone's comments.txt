@@ -327,7 +327,7 @@ Might be helpful to standardize that consistently
 Phone is typed as int
 Could be an issue potentially with international numbers or if there are leading zeros
 One option could be to just change it to a str
-❌ 6. Variable naming in employees.py
+✅ 6. Variable naming in employees.py
 In get_employees assign database result to variable name employees
 Could become confusing because the router name is also employes
 Rename the result to something more descriptive

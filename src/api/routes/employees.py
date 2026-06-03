@@ -182,7 +182,7 @@ def get_employee_stats(
 def get_employees(company_id: int) -> List[Employee]:
     """Get employees for one company."""
     with db.engine.begin() as connection:
-        employees = connection.execute(
+        employee_rows = connection.execute(
             sqlalchemy.text(
                 """
                 SELECT id, company_id, first_name, last_name, email, phone, title_id, level, department, hire_date, current_employee
@@ -193,7 +193,7 @@ def get_employees(company_id: int) -> List[Employee]:
             {"company_id": company_id},
         ).mappings().all()
 
-    all_employees = [dict(e) for e in employees]
+    all_employees = [dict(employee) for employee in employee_rows]
     return all_employees
 
 
