@@ -161,10 +161,10 @@ def get_department_stats(
                     AVG(pr.category_2) AS average_category_2,
                     AVG(pr.category_3) AS average_category_3,
                     COUNT(*) FILTER (
-                        WHERE pr.title_change = 1
+                        WHERE pr.title_change IS TRUE
                     ) AS title_change_count,
                     COUNT(*) FILTER (
-                        WHERE pr.level_change = 1
+                        WHERE pr.level_change IS TRUE
                     ) AS level_change_count
                 FROM department_employees de
                 LEFT JOIN performance_reviews pr

@@ -132,10 +132,10 @@ def get_employee_stats(
                     AVG(category_2) AS average_category_2,
                     AVG(category_3) AS average_category_3,
                     COUNT(*) FILTER (
-                        WHERE title_change = 1
+                        WHERE title_change IS TRUE
                     ) AS title_change_count,
                     COUNT(*) FILTER (
-                        WHERE level_change = 1
+                        WHERE level_change IS TRUE
                     ) AS level_change_count
                 FROM performance_reviews
                 WHERE employee_id = :employee_id
