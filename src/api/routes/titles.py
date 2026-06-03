@@ -57,7 +57,7 @@ def get_titles() -> List[Title]:
             )
         ).mappings().all()
 
-    all_titles = [dict(title) for title in titles]
+        all_titles = [dict(title) for title in titles]
     return all_titles
 
 

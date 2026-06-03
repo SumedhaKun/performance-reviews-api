@@ -192,8 +192,7 @@ def get_employees(company_id: int) -> List[Employee]:
             ),
             {"company_id": company_id},
         ).mappings().all()
-
-    all_employees = [dict(employee) for employee in employee_rows]
+        all_employees = [dict(employee) for employee in employee_rows]
     return all_employees
 
 
@@ -294,4 +293,3 @@ def delete_employee(employee_id: int):
             ),
             {"employee_id": employee_id},
         )
-

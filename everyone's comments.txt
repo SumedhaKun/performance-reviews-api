@@ -356,6 +356,8 @@ database_url = os.getenv(
         "postgresql+psycopg://myuser:mypassword@localhost/pr_database",
     )
 Would maybe change to something like: connection_url = config.get_settings().POSTGRES_URI so not relying on explicit plaintext connection string
-✅ 12. For loop inside database connection in both employees.py and titles.py
+💛 12. For loop inside database connection in both employees.py and titles.py
 Line 98 in employees and Line 55 in titles
 Run the loop outside of the database transaction (with db.engine.begin() as connection statement chunk)
+
+**Response**: We are keeping this as-is because the query already calls `.mappings().all()`, which fetches the rows before the list conversion runs. The loop is only converting each row into a plain dictionary, not making more database calls. Keeping it near the query is easier to read and matches the simple style used in this project.
