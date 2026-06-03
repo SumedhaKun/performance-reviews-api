@@ -118,6 +118,12 @@ def get_comment(comment_id: int):
 @router.post("/", response_model=Comment, status_code=status.HTTP_201_CREATED)
 def create_comment(new_comment: NewComment):
     """Create a comment."""
+    if new_comment.employeeId == new_comment.authorId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Author cannot comment on themself",
+        )
+
     with db.engine.begin() as connection:
         ensure_resource_exists(
             connection,

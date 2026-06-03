@@ -71,6 +71,14 @@ def ensure_review_employees_exist(
         )
 
 
+def validate_not_self_review(employee_id: int | None, reviewer_id: int | None):
+    if employee_id is not None and employee_id == reviewer_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reviewer cannot review themself",
+        )
+
+
 class PerformanceReview(BaseModel):
     employee_id: int
     review_period_start: date
@@ -210,6 +218,10 @@ def get_performance_review(review_id: int):
 
 @router.post("/draft", response_model=IdResponse, status_code=status.HTTP_201_CREATED)
 def create_draft(performance_review: PerformanceReviewDraft):
+    validate_not_self_review(
+        performance_review.employee_id,
+        performance_review.reviewer_id,
+    )
     validate_review_date_order(
         performance_review.review_period_start,
         performance_review.review_period_end,
@@ -380,6 +392,10 @@ def update_draft(
             updated_values["review_period_end"],
             updated_values["review_date"],
         )
+        validate_not_self_review(
+            updated_values["employee_id"],
+            updated_values["reviewer_id"],
+        )
 
         set_clause = ", ".join(f"{key} = :{key}" for key in values)
 
@@ -480,6 +496,10 @@ def submit_draft(draft_id: int):
             draft_values["employee_id"],
             draft_values["reviewer_id"],
         )
+        validate_not_self_review(
+            draft_values["employee_id"],
+            draft_values["reviewer_id"],
+        )
 
         review_id = connection.execute(
             sqlalchemy.text("""
@@ -556,6 +576,10 @@ def submit_draft(draft_id: int):
 )
 def create_performance_review(performance_review: PerformanceReview):
     """Create a performance review."""
+    validate_not_self_review(
+        performance_review.employee_id,
+        performance_review.reviewer_id,
+    )
     validate_review_date_order(
         performance_review.review_period_start,
         performance_review.review_period_end,
@@ -740,6 +764,10 @@ def patch_performance_review(review_id: int, new_review: PerformanceReviewDraft)
             merged_review["review_period_start"],
             merged_review["review_period_end"],
             merged_review["review_date"],
+        )
+        validate_not_self_review(
+            merged_review["employee_id"],
+            merged_review["reviewer_id"],
         )
 
         updated_review = connection.execute(query, update_fields).one_or_none()
