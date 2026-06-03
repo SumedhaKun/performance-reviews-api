@@ -182,6 +182,12 @@ def get_employee_stats(
 def get_employees(company_id: int) -> List[Employee]:
     """Get employees for one company."""
     with db.engine.begin() as connection:
+        ensure_resource_exists(
+            connection,
+            "companies",
+            company_id,
+            "Company not found"
+        )
         employee_rows = connection.execute(
             sqlalchemy.text(
                 """

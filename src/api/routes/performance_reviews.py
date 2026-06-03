@@ -62,18 +62,12 @@ def ensure_review_employees_exist(
 ):
     if employee_id is not None:
         ensure_resource_exists(
-            connection,
-            "employees",
-            employee_id,
-            "Reviewed employee not found"
+            connection, "employees", employee_id, "Reviewed employee not found"
         )
 
     if reviewer_id is not None:
         ensure_resource_exists(
-            connection,
-            "employees",
-            reviewer_id,
-            "Reviewer not found"
+            connection, "employees", reviewer_id, "Reviewer not found"
         )
 
 
@@ -110,6 +104,7 @@ class PerformanceReviewDraft(BaseModel):
 class PerformanceReviewResponse(PerformanceReview):
     id: int
 
+
 class IdResponse(BaseModel):
     id: int
 
@@ -124,8 +119,13 @@ router = APIRouter(
     dependencies=[Depends(auth.get_api_key)],
 )
 
-@router.get("/", response_model=list[PerformanceReviewResponse], status_code=status.HTTP_200_OK)
-def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Optional[int] = None):
+
+@router.get(
+    "/", response_model=list[PerformanceReviewResponse], status_code=status.HTTP_200_OK
+)
+def get_performance_reviews(
+    reviewerId: Optional[int] = None, employeeId: Optional[int] = None
+):
     """Get all performance reviews."""
     if reviewerId is None and employeeId is None:
         raise HTTPException(
@@ -144,65 +144,69 @@ def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Option
         filters.append("employee_id = :employee_id")
         params["employee_id"] = employeeId
 
-
     with db.engine.begin() as connection:
         where_clause = " AND ".join(filters)
-        performance_reviews = (
-            connection.execute(
-                sqlalchemy.text(
-                    """
+        performance_reviews = connection.execute(
+            sqlalchemy.text(
+                """
                 SELECT id, employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 FROM performance_reviews
-                WHERE """ + where_clause + """
+                WHERE """
+                + where_clause
+                + """
                 ORDER BY review_date DESC, id DESC
                 """
-                ), params
-            )
-            .mappings()
-        )
+            ),
+            params,
+        ).mappings()
 
     return [dict(review) for review in performance_reviews]
 
-@router.get("/{review_id}/", response_model=PerformanceReviewResponse, status_code=status.HTTP_200_OK)
+
+@router.get(
+    "/{review_id}/",
+    response_model=PerformanceReviewResponse,
+    status_code=status.HTTP_200_OK,
+)
 def get_performance_review(review_id: int):
     """Get one performance review by id."""
     with db.engine.begin() as connection:
-        performance_review = (
-            connection.execute(
-                sqlalchemy.text(
-                    """
+        performance_review = connection.execute(
+            sqlalchemy.text(
+                """
                 SELECT id, employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 FROM performance_reviews
                 WHERE id = :review_id
                 """
-                ),
-                {"review_id": review_id},
-            )
-            .one_or_none()
-        )
+            ),
+            {"review_id": review_id},
+        ).one_or_none()
 
     if performance_review is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+        )
 
     return PerformanceReviewResponse(
-        id = performance_review.id,
-        employee_id = performance_review.employee_id,
-        review_period_start = performance_review.review_period_start,
-        review_period_end = performance_review.review_period_end,
-        review_date = performance_review.review_date,
-        reviewer_id = performance_review.reviewer_id,
-        overall_rating = performance_review.overall_rating,
-        category_1 = performance_review.category_1,
-        category_2 = performance_review.category_2,
-        category_3 = performance_review.category_3,
-        comment = performance_review.comment,
-        title_change = performance_review.title_change,
-        level_change = performance_review.level_change
+        id=performance_review.id,
+        employee_id=performance_review.employee_id,
+        review_period_start=performance_review.review_period_start,
+        review_period_end=performance_review.review_period_end,
+        review_date=performance_review.review_date,
+        reviewer_id=performance_review.reviewer_id,
+        overall_rating=performance_review.overall_rating,
+        category_1=performance_review.category_1,
+        category_2=performance_review.category_2,
+        category_3=performance_review.category_3,
+        comment=performance_review.comment,
+        title_change=performance_review.title_change,
+        level_change=performance_review.level_change,
     )
+
 
 @router.post("/draft", response_model=IdResponse, status_code=status.HTTP_201_CREATED)
 def create_draft(performance_review: PerformanceReviewDraft):
@@ -271,47 +275,51 @@ def create_draft(performance_review: PerformanceReviewDraft):
 
     return IdResponse(id=draft_id)
 
-@router.get("/draft/{draft_id}/", response_model=PerformanceReviewDraft, status_code=status.HTTP_200_OK)
-def get_draft(
-    draft_id: int
-):
+
+@router.get(
+    "/draft/{draft_id}/",
+    response_model=PerformanceReviewDraft,
+    status_code=status.HTTP_200_OK,
+)
+def get_draft(draft_id: int):
     with db.engine.begin() as connection:
-        performance_review = (
-            connection.execute(
-                sqlalchemy.text(
-                    """
+        performance_review = connection.execute(
+            sqlalchemy.text(
+                """
                 SELECT employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 FROM pr_draft
                 WHERE id = :draft_id
                 """
-                ),
-                {"draft_id": draft_id},
-            )
-            .one_or_none()
-        )
+            ),
+            {"draft_id": draft_id},
+        ).one_or_none()
 
     if performance_review is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+        )
 
     return PerformanceReviewDraft(
-        employee_id = performance_review.employee_id,
-        review_period_start = performance_review.review_period_start,
-        review_period_end = performance_review.review_period_end,
-        review_date = performance_review.review_date,
-        reviewer_id = performance_review.reviewer_id,
-        overall_rating = performance_review.overall_rating,
-        category_1 = performance_review.category_1,
-        category_2 = performance_review.category_2,
-        category_3 = performance_review.category_3,
-        comment = performance_review.comment,
-        title_change = performance_review.title_change,
-        level_change = performance_review.level_change
+        employee_id=performance_review.employee_id,
+        review_period_start=performance_review.review_period_start,
+        review_period_end=performance_review.review_period_end,
+        review_date=performance_review.review_date,
+        reviewer_id=performance_review.reviewer_id,
+        overall_rating=performance_review.overall_rating,
+        category_1=performance_review.category_1,
+        category_2=performance_review.category_2,
+        category_3=performance_review.category_3,
+        comment=performance_review.comment,
+        title_change=performance_review.title_change,
+        level_change=performance_review.level_change,
     )
-    
 
-@router.patch("/draft/{draft_id}/", response_model=SuccessResponse, status_code=status.HTTP_200_OK)
+
+@router.patch(
+    "/draft/{draft_id}/", response_model=SuccessResponse, status_code=status.HTTP_200_OK
+)
 def update_draft(
     draft_id: int,
     performance_review: PerformanceReviewDraft,
@@ -380,36 +388,63 @@ def update_draft(
             SET {set_clause}
             WHERE id = :draft_id
         """
-        
+
         values["draft_id"] = draft_id
 
         result = connection.execute(sqlalchemy.text(query), values)
 
         if result.rowcount == 0:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found"
+            )
 
     return {"success": True}
 
 
-@router.post("/submit/{draft_id}", response_model=IdResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/submit/{draft_id}", response_model=IdResponse, status_code=status.HTTP_201_CREATED
+)
 def submit_draft(draft_id: int):
     with db.engine.begin() as connection:
-        draft = connection.execute(
-            sqlalchemy.text("""
+
+        submitted = (
+            connection.execute(
+                sqlalchemy.text("""
+                SELECT review_id
+                FROM submitted_pr_drafts
+                WHERE draft_id = :draft_id
+            """),
+                {"draft_id": draft_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+
+        if submitted is not None:
+            print(submitted)
+            return IdResponse(id=submitted["review_id"])
+
+        draft = (
+            connection.execute(
+                sqlalchemy.text("""
                 SELECT *
                 FROM pr_draft
                 WHERE id = :draft_id
             """),
-            {"draft_id": draft_id},
-        ).mappings().first()
+                {"draft_id": draft_id},
+            )
+            .mappings()
+            .first()
+        )
 
         if not draft:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found"
+            )
 
         draft_values = dict(draft)
         missing_fields = [
-            field for field in review_needs
-            if draft_values.get(field) is None
+            field for field in review_needs if draft_values.get(field) is None
         ]
         if missing_fields:
             raise HTTPException(
@@ -502,9 +537,23 @@ def submit_draft(draft_id: int):
             {"draft_id": draft_id},
         )
 
+        connection.execute(
+            sqlalchemy.text("""
+                INSERT INTO submitted_pr_drafts (draft_id, review_id)
+                VALUES (:draft_id, :review_id)
+            """),
+            {
+                "draft_id": draft_id,
+                "review_id": review_id,
+            },
+        )
+
     return IdResponse(id=review_id)
 
-@router.post("/", response_model=PerformanceReviewResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/", response_model=PerformanceReviewResponse, status_code=status.HTTP_201_CREATED
+)
 def create_performance_review(performance_review: PerformanceReview):
     """Create a performance review."""
     validate_review_date_order(
@@ -520,10 +569,9 @@ def create_performance_review(performance_review: PerformanceReview):
             performance_review.reviewer_id,
         )
 
-        performance_review = (
-            connection.execute(
-                sqlalchemy.text(
-                    """
+        performance_review = connection.execute(
+            sqlalchemy.text(
+                """
                 INSERT INTO performance_reviews (
                     employee_id, review_period_start, review_period_end,
                     review_date, reviewer_id, overall_rating, category_1, category_2,
@@ -538,39 +586,37 @@ def create_performance_review(performance_review: PerformanceReview):
                     review_date, reviewer_id, overall_rating, category_1, category_2,
                     category_3, comment, title_change, level_change
                 """
-                ),
-                {
-                    "employee_id": performance_review.employee_id,
-                    "review_period_start": performance_review.review_period_start,
-                    "review_period_end": performance_review.review_period_end,
-                    "review_date": performance_review.review_date,
-                    "reviewer_id": performance_review.reviewer_id,
-                    "overall_rating": performance_review.overall_rating,
-                    "category_1": performance_review.category_1,
-                    "category_2": performance_review.category_2,
-                    "category_3": performance_review.category_3,
-                    "comment": performance_review.comment,
-                    "title_change": performance_review.title_change,
-                    "level_change": performance_review.level_change,
-                },
-            )
-            .one()
-        )
+            ),
+            {
+                "employee_id": performance_review.employee_id,
+                "review_period_start": performance_review.review_period_start,
+                "review_period_end": performance_review.review_period_end,
+                "review_date": performance_review.review_date,
+                "reviewer_id": performance_review.reviewer_id,
+                "overall_rating": performance_review.overall_rating,
+                "category_1": performance_review.category_1,
+                "category_2": performance_review.category_2,
+                "category_3": performance_review.category_3,
+                "comment": performance_review.comment,
+                "title_change": performance_review.title_change,
+                "level_change": performance_review.level_change,
+            },
+        ).one()
 
     return PerformanceReviewResponse(
-        id = performance_review.id,
-        employee_id = performance_review.employee_id,
-        review_period_start = performance_review.review_period_start,
-        review_period_end = performance_review.review_period_end,
-        review_date = performance_review.review_date,
-        reviewer_id = performance_review.reviewer_id,
-        overall_rating = performance_review.overall_rating,
-        category_1 = performance_review.category_1,
-        category_2 = performance_review.category_2,
-        category_3 = performance_review.category_3,
-        comment = performance_review.comment,
-        title_change = performance_review.title_change,
-        level_change = performance_review.level_change
+        id=performance_review.id,
+        employee_id=performance_review.employee_id,
+        review_period_start=performance_review.review_period_start,
+        review_period_end=performance_review.review_period_end,
+        review_date=performance_review.review_date,
+        reviewer_id=performance_review.reviewer_id,
+        overall_rating=performance_review.overall_rating,
+        category_1=performance_review.category_1,
+        category_2=performance_review.category_2,
+        category_3=performance_review.category_3,
+        comment=performance_review.comment,
+        title_change=performance_review.title_change,
+        level_change=performance_review.level_change,
     )
 
 
@@ -579,10 +625,7 @@ def delete_performance_row(review_id: int):
     """Delete a performance review."""
     with db.engine.begin() as connection:
         ensure_resource_exists(
-            connection,
-            "performance_reviews",
-            review_id,
-            "Review not found"
+            connection, "performance_reviews", review_id, "Review not found"
         )
 
         connection.execute(
@@ -594,11 +637,12 @@ def delete_performance_row(review_id: int):
         )
 
 
-@router.patch("/{review_id}/", response_model=PerformanceReviewResponse, status_code=status.HTTP_200_OK,)
-def patch_performance_review(
-    review_id: int,
-    new_review: PerformanceReviewDraft
-):
+@router.patch(
+    "/{review_id}/",
+    response_model=PerformanceReviewResponse,
+    status_code=status.HTTP_200_OK,
+)
+def patch_performance_review(review_id: int, new_review: PerformanceReviewDraft):
     """Update fields on a performance review."""
     update_fields = {
         "employee_id": new_review.employee_id,
@@ -618,25 +662,41 @@ def patch_performance_review(
     update_fields = {k: v for k, v in update_fields.items() if v is not None}
 
     if not update_fields:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided for update")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No fields provided for update",
+        )
 
     allowed_columns = {
-        "employee_id", "review_period_start", "review_period_end",
-        "review_date", "reviewer_id", "overall_rating", "category_1",
-        "category_2", "category_3", "comment", "title_change", "level_change"
+        "employee_id",
+        "review_period_start",
+        "review_period_end",
+        "review_date",
+        "reviewer_id",
+        "overall_rating",
+        "category_1",
+        "category_2",
+        "category_3",
+        "comment",
+        "title_change",
+        "level_change",
     }
-    
+
     # Validate that all keys are allowed columns
     for key in update_fields.keys():
         if key not in allowed_columns:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid field: {key}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid field: {key}"
+            )
 
     set_clause = ", ".join([f"{key} = :{key}" for key in update_fields.keys()])
 
     query = sqlalchemy.text(
         """
         UPDATE performance_reviews
-        SET """ + set_clause + """
+        SET """
+        + set_clause
+        + """
         WHERE id = :review_id
         RETURNING id, employee_id, review_period_start, review_period_end,
             review_date, reviewer_id, overall_rating, category_1, category_2,
@@ -659,11 +719,14 @@ def patch_performance_review(
                 """),
                 {"review_id": review_id},
             )
-            .mappings().one_or_none()
+            .mappings()
+            .one_or_none()
         )
 
         if existing_review is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
+            )
 
         ensure_review_employees_exist(
             connection,
@@ -679,22 +742,20 @@ def patch_performance_review(
             merged_review["review_date"],
         )
 
-        updated_review = (
-            connection.execute(query, update_fields).one_or_none()
-        )
+        updated_review = connection.execute(query, update_fields).one_or_none()
 
     return PerformanceReviewResponse(
-        id = updated_review.id,
-        employee_id = updated_review.employee_id,
-        review_period_start = updated_review.review_period_start,
-        review_period_end = updated_review.review_period_end,
-        review_date = updated_review.review_date,
-        reviewer_id = updated_review.reviewer_id,
-        overall_rating = updated_review.overall_rating,
-        category_1 = updated_review.category_1,
-        category_2 = updated_review.category_2,
-        category_3 = updated_review.category_3,
-        comment = updated_review.comment,
-        title_change = updated_review.title_change,
-        level_change = updated_review.level_change
+        id=updated_review.id,
+        employee_id=updated_review.employee_id,
+        review_period_start=updated_review.review_period_start,
+        review_period_end=updated_review.review_period_end,
+        review_date=updated_review.review_date,
+        reviewer_id=updated_review.reviewer_id,
+        overall_rating=updated_review.overall_rating,
+        category_1=updated_review.category_1,
+        category_2=updated_review.category_2,
+        category_3=updated_review.category_3,
+        comment=updated_review.comment,
+        title_change=updated_review.title_change,
+        level_change=updated_review.level_change,
     )
