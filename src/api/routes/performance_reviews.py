@@ -98,7 +98,7 @@ class PerformanceReviewDraft(BaseModel):
     review_period_end: date | None = None
     review_date: date | None = None
     reviewer_id: int | None = None
-    overall_rating: int | None = None
+    overall_rating: int | None = Field(default=None, ge=1, le=10)
     category_1: int | None = Field(default=None, ge=1, le=10)
     category_2: int | None = Field(default=None, ge=1, le=10)
     category_3: int | None = Field(default=None, ge=1, le=10)
