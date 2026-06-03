@@ -201,9 +201,9 @@ def get_department_stats(
         average_category_2=stats["average_category_2"],
         average_category_3=stats["average_category_3"],
         title_change_count=title_change_count,
-        title_change_rate=(title_change_count / total_reviews * 100),
+        title_change_rate= (title_change_count / total_reviews * 100) if total_reviews > 0 else 0,
         level_change_count=level_change_count,
-        level_change_rate=(level_change_count / total_reviews * 100),
+        level_change_rate=(level_change_count / total_reviews * 100) if total_reviews > 0 else 0,
     )
 
 

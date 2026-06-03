@@ -170,9 +170,9 @@ def get_employee_stats(
         average_category_2=stats["average_category_2"],
         average_category_3=stats["average_category_3"],
         title_change_count=title_change_count,
-        title_change_rate=(title_change_count / total_reviews * 100),
+        title_change_rate=(title_change_count / total_reviews * 100) if total_reviews > 0 else 0,
         level_change_count=level_change_count,
-        level_change_rate=(level_change_count / total_reviews * 100),
+        level_change_rate=(level_change_count / total_reviews * 100) if total_reviews > 0 else 0,
     )
 
 
@@ -201,15 +201,15 @@ def add_employee(new_employee: NewEmployee):
     """Create an employee."""
     with db.engine.begin() as connection:
         ensure_resource_exists(
-            connection, 
-            "companies", 
-            new_employee.company_id, 
+            connection,
+            "companies",
+            new_employee.company_id,
             "Company not found"
         )
         ensure_resource_exists(
-            connection, 
-            "titles", 
-            new_employee.title_id, 
+            connection,
+            "titles",
+            new_employee.title_id,
             "Title not found"
         )
 
@@ -246,9 +246,9 @@ def delete_employee(employee_id: int):
     """Delete an employee."""
     with db.engine.begin() as connection:
         ensure_resource_exists(
-            connection, 
-            "employees", 
-            employee_id, 
+            connection,
+            "employees",
+            employee_id,
             "Employee not found"
         )
 
@@ -277,9 +277,20 @@ def delete_employee(employee_id: int):
         connection.execute(
             sqlalchemy.text(
                 """
+                DELETE FROM appraisals
+                WHERE employee_id = :employee_id
+                """
+            ),
+            {"employee_id": employee_id},
+        )
+
+        connection.execute(
+            sqlalchemy.text(
+                """
                 DELETE FROM employees
                 WHERE id = :employee_id
                 """
             ),
             {"employee_id": employee_id},
         )
+
