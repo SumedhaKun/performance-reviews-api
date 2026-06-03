@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, status
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
@@ -6,6 +6,75 @@ import sqlalchemy
 from src.api.routes import auth
 from src.api import db
 from src.api.routes.helpers import ensure_resource_exists
+
+
+review_needs = (
+    "employee_id",
+    "review_period_start",
+    "review_period_end",
+    "review_date",
+    "reviewer_id",
+    "overall_rating",
+    "category_1",
+    "category_2",
+    "category_3",
+    "comment",
+)
+
+ratings = (
+    "overall_rating",
+    "category_1",
+    "category_2",
+    "category_3",
+)
+
+
+def validate_review_date_order(
+    review_period_start: date | None,
+    review_period_end: date | None,
+    review_date: date | None,
+) -> None:
+    if (
+        review_period_start is not None
+        and review_period_end is not None
+        and review_period_start > review_period_end
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="review_period_start must be on or before review_period_end",
+        )
+
+    if (
+        review_period_end is not None
+        and review_date is not None
+        and review_period_end > review_date
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="review_period_end must be on or before review_date",
+        )
+
+
+def ensure_review_employees_exist(
+    connection,
+    employee_id: int | None,
+    reviewer_id: int | None,
+):
+    if employee_id is not None:
+        ensure_resource_exists(
+            connection,
+            "employees",
+            employee_id,
+            "Reviewed employee not found"
+        )
+
+    if reviewer_id is not None:
+        ensure_resource_exists(
+            connection,
+            "employees",
+            reviewer_id,
+            "Reviewer not found"
+        )
 
 
 class PerformanceReview(BaseModel):
@@ -42,10 +111,6 @@ class PerformanceReviewResponse(PerformanceReview):
     id: int
 
 class IdResponse(BaseModel):
-    id: int
-
-
-class DraftResponse(BaseModel):
     id: int
 
 
@@ -100,7 +165,7 @@ def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Option
 
     return [dict(review) for review in performance_reviews]
 
-@router.get("/{review_id}/", response_model=PerformanceReviewResponse, status_code=200)
+@router.get("/{review_id}/", response_model=PerformanceReviewResponse, status_code=status.HTTP_200_OK)
 def get_performance_review(review_id: int):
     """Get one performance review by id."""
     with db.engine.begin() as connection:
@@ -139,21 +204,19 @@ def get_performance_review(review_id: int):
         level_change = performance_review.level_change
     )
 
-@router.post("/draft", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/draft", response_model=IdResponse, status_code=status.HTTP_201_CREATED)
 def create_draft(performance_review: PerformanceReviewDraft):
-    with db.engine.begin() as connection:
-        ensure_resource_exists(
-            connection,
-            "employees",
-            performance_review.employee_id,
-            "Reviewed employee not found"
-        )
+    validate_review_date_order(
+        performance_review.review_period_start,
+        performance_review.review_period_end,
+        performance_review.review_date,
+    )
 
-        ensure_resource_exists(
+    with db.engine.begin() as connection:
+        ensure_review_employees_exist(
             connection,
-            "employees",
+            performance_review.employee_id,
             performance_review.reviewer_id,
-            "Reviewer not found"
         )
 
         result = connection.execute(
@@ -188,7 +251,20 @@ def create_draft(performance_review: PerformanceReviewDraft):
                 )
                 RETURNING id
             """),
-            performance_review.model_dump(),
+            {
+                "employee_id": performance_review.employee_id,
+                "review_period_start": performance_review.review_period_start,
+                "review_period_end": performance_review.review_period_end,
+                "review_date": performance_review.review_date,
+                "reviewer_id": performance_review.reviewer_id,
+                "overall_rating": performance_review.overall_rating,
+                "category_1": performance_review.category_1,
+                "category_2": performance_review.category_2,
+                "category_3": performance_review.category_3,
+                "comment": performance_review.comment,
+                "title_change": performance_review.title_change,
+                "level_change": performance_review.level_change,
+            },
         )
 
         draft_id = result.scalar_one()
@@ -217,7 +293,7 @@ def get_draft(
         )
 
     if performance_review is None:
-        raise HTTPException(status_code=404, detail="Review not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
     return PerformanceReviewDraft(
         employee_id = performance_review.employee_id,
@@ -240,31 +316,82 @@ def update_draft(
     draft_id: int,
     performance_review: PerformanceReviewDraft,
 ):
-    values = performance_review.model_dump(exclude_unset=True)
+    values = {
+        "employee_id": performance_review.employee_id,
+        "review_period_start": performance_review.review_period_start,
+        "review_period_end": performance_review.review_period_end,
+        "review_date": performance_review.review_date,
+        "reviewer_id": performance_review.reviewer_id,
+        "overall_rating": performance_review.overall_rating,
+        "category_1": performance_review.category_1,
+        "category_2": performance_review.category_2,
+        "category_3": performance_review.category_3,
+        "comment": performance_review.comment,
+        "title_change": performance_review.title_change,
+        "level_change": performance_review.level_change,
+    }
+
+    values = {key: value for key, value in values.items() if value is not None}
 
     if not values:
         return {"success": True}
 
-    set_clause = ", ".join(f"{key} = :{key}" for key in values)
-
-    query = f"""
-        UPDATE pr_draft
-        SET {set_clause}
-        WHERE id = :draft_id
-    """
-
-    values["draft_id"] = draft_id
-
     with db.engine.begin() as connection:
+        existing_draft = (
+            connection.execute(
+                sqlalchemy.text("""
+                    SELECT employee_id, review_period_start, review_period_end,
+                        review_date, reviewer_id, overall_rating, category_1,
+                        category_2, category_3, comment, title_change,
+                        level_change
+                    FROM pr_draft
+                    WHERE id = :draft_id
+                """),
+                {"draft_id": draft_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+
+        if existing_draft is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Draft not found",
+            )
+
+        ensure_review_employees_exist(
+            connection,
+            values.get("employee_id"),
+            values.get("reviewer_id"),
+        )
+
+        updated_values = dict(existing_draft)
+        updated_values.update(values)
+        validate_review_date_order(
+            updated_values["review_period_start"],
+            updated_values["review_period_end"],
+            updated_values["review_date"],
+        )
+
+        set_clause = ", ".join(f"{key} = :{key}" for key in values)
+
+        query = f"""
+            UPDATE pr_draft
+            SET {set_clause}
+            WHERE id = :draft_id
+        """
+        
+        values["draft_id"] = draft_id
+
         result = connection.execute(sqlalchemy.text(query), values)
 
         if result.rowcount == 0:
-            raise HTTPException(404, "Draft not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
 
     return {"success": True}
 
 
-@router.post("/submit/{draft_id}", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/submit/{draft_id}", response_model=IdResponse, status_code=status.HTTP_201_CREATED)
 def submit_draft(draft_id: int):
     with db.engine.begin() as connection:
         draft = connection.execute(
@@ -277,7 +404,41 @@ def submit_draft(draft_id: int):
         ).mappings().first()
 
         if not draft:
-            raise HTTPException(404, "Draft not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Draft not found")
+
+        draft_values = dict(draft)
+        missing_fields = [
+            field for field in review_needs
+            if draft_values.get(field) is None
+        ]
+        if missing_fields:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUESTdetail=f"Draft is missing required fields: {', '.join(missing_fields)}")
+
+        for field in ratings:
+            if draft_values[field] < 1 or draft_values[field] > 10:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"{field} must be between 1 and 10")
+
+        validate_review_date_order(
+            draft_values["review_period_start"],
+            draft_values["review_period_end"],
+            draft_values["review_date"],
+        )
+
+        draft_values["title_change"] = (
+            draft_values["title_change"]
+            if draft_values["title_change"] is not None
+            else False
+        )
+        draft_values["level_change"] = (
+            draft_values["level_change"]
+            if draft_values["level_change"] is not None
+            else False
+        )
+        ensure_review_employees_exist(
+            connection,
+            draft_values["employee_id"],
+            draft_values["reviewer_id"],
+        )
 
         review_id = connection.execute(
             sqlalchemy.text("""
@@ -311,7 +472,20 @@ def submit_draft(draft_id: int):
                 )
                 RETURNING id
             """),
-            dict(draft),
+            {
+                "employee_id": draft_values["employee_id"],
+                "review_period_start": draft_values["review_period_start"],
+                "review_period_end": draft_values["review_period_end"],
+                "review_date": draft_values["review_date"],
+                "reviewer_id": draft_values["reviewer_id"],
+                "overall_rating": draft_values["overall_rating"],
+                "category_1": draft_values["category_1"],
+                "category_2": draft_values["category_2"],
+                "category_3": draft_values["category_3"],
+                "comment": draft_values["comment"],
+                "title_change": draft_values["title_change"],
+                "level_change": draft_values["level_change"],
+            },
         ).scalar_one()
 
         connection.execute(
@@ -327,7 +501,19 @@ def submit_draft(draft_id: int):
 @router.post("/", response_model=PerformanceReviewResponse, status_code=status.HTTP_201_CREATED)
 def create_performance_review(performance_review: PerformanceReview):
     """Create a performance review."""
+    validate_review_date_order(
+        performance_review.review_period_start,
+        performance_review.review_period_end,
+        performance_review.review_date,
+    )
+
     with db.engine.begin() as connection:
+        ensure_review_employees_exist(
+            connection,
+            performance_review.employee_id,
+            performance_review.reviewer_id,
+        )
+
         performance_review = (
             connection.execute(
                 sqlalchemy.text(
@@ -406,18 +592,6 @@ def delete_performance_row(review_id: int):
 def patch_performance_review(
     review_id: int,
     new_review: PerformanceReviewDraft
-    #employee_id: int | None = None,
-    #review_period_start: date | None = None,
-    #review_period_end: date | None = None,
-    #review_date: date | None = None,
-    #reviewer_id: int | None = None,
-    #overall_rating: int | None = Query(default=None, ge=1, le=10),
-    #category_1: int | None = None,
-    #category_2: int | None = None,
-    #category_3: int | None = None,
-    #comment: str | None = None,
-    #title_change: bool | None = None,
-    #level_change: bool | None = None,"""
 ):
     """Update fields on a performance review."""
     update_fields = {
@@ -467,26 +641,41 @@ def patch_performance_review(
     update_fields["review_id"] = review_id
 
     with db.engine.begin() as connection:
-        if new_review.employee_id is not None:
-            ensure_resource_exists(
-                connection,
-                "employees",
-                new_review.employee_id,
-                "Reviewed employee not found"
+        existing_review = (
+            connection.execute(
+                sqlalchemy.text("""
+                    SELECT id, employee_id, review_period_start, review_period_end,
+                        review_date, reviewer_id, overall_rating, category_1,
+                        category_2, category_3, comment, title_change,
+                        level_change
+                    FROM performance_reviews
+                    WHERE id = :review_id
+                """),
+                {"review_id": review_id},
             )
-        if new_review.reviewer_id is not None:
-            ensure_resource_exists(
-                connection,
-                "employees",
-                new_review.reviewer_id,
-                "Reviewer not found"
-            )
+            .mappings().one_or_none()
+        )
+
+        if existing_review is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+
+        ensure_review_employees_exist(
+            connection,
+            new_review.employee_id,
+            new_review.reviewer_id,
+        )
+
+        merged_review = dict(existing_review)
+        merged_review.update(update_fields)
+        validate_review_date_order(
+            merged_review["review_period_start"],
+            merged_review["review_period_end"],
+            merged_review["review_date"],
+        )
+
         updated_review = (
             connection.execute(query, update_fields).one_or_none()
         )
-
-    if updated_review is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
 
     return PerformanceReviewResponse(
         id = updated_review.id,
