@@ -275,14 +275,18 @@ A plain dictionary would be clearer for single-row operations.
 
 ✅ 13. Several endpoints use trailing slashes inconsistently in their route decorators. This can cause small but annoying client-side issues
 
-❌ 14. Some endpoints return database values directly as dictionaries, while others manually construct Pydantic models. Project should choose one pattern and apply it consistently.
+✅ 14. Some endpoints return database values directly as dictionaries, while others manually construct Pydantic models. Project should choose one pattern and apply it consistently.
 
 
 ------------------------------------------------------------------------------------------------------------
 
-❌ Single spec and inconsistent with itself. APISpec.md mixes plural and singular paths for the same resource like POST /comments/ vs GET /comment/ and DELETE /comments/{comment_id}), and mixes author vs authorId in places. 
+💛 Single spec and inconsistent with itself. APISpec.md mixes plural and singular paths for the same resource like POST /comments/ vs GET /comment/ and DELETE /comments/{comment_id}), and mixes author vs authorId in places.
 
-❌ There is some formatting inconsistency in the spec. Curly quotes and uneven indentation in APISpec.md make the file harder to diff, copy into tests, and check.
+**Response**: We appreciate this feedback and will keep it in mind for future API specification updates. Consistency in path naming conventions and field naming will be prioritized in upcoming revisions. 
+
+💛 There is some formatting inconsistency in the spec. Curly quotes and uneven indentation in APISpec.md make the file harder to diff, copy into tests, and check.
+
+**Response**: We appreciate this feedback and will take it into consideration for future API specifications. We will ensure proper formatting standards and consistent indentation in upcoming documentation updates.
 
 ✅ The debug output in a request handler, print("hey") in the performance reviews list handler is something I would change to be more informative and production ready. I would suggest using structured logging or removing it.
 
@@ -290,7 +294,7 @@ A plain dictionary would be clearer for single-row operations.
 
 ✅ There are some misleading names like get_tag for fetching a title by id and these misleading names can make navigation and code search harder. Naming and name matching can be helpful in creating readable code.
 
-❌ There are some inconsistent handler and return patterns. Some routes declare response_model and return Pydantic models (Employee, Title in employees.py and titles.py), while others return raw dicts / SQLAlchemy mappings from companies.py, performance_reviews.py, and comments.py (via dict(...) or .mappings() with no response_model). That split can make checking and testing harder. 
+✅ There are some inconsistent handler and return patterns. Some routes declare response_model and return Pydantic models (Employee, Title in employees.py and titles.py), while others return raw dicts / SQLAlchemy mappings from companies.py, performance_reviews.py, and comments.py (via dict(...) or .mappings() with no response_model). That split can make checking and testing harder.
 
 ✅ There is inconsistent DELETE behavior in code — Comment delete checks existence and can return 404; performance review delete always returns 204. I think it’d be better if the codebase follows one explicit pattern per resource family.
 
@@ -330,10 +334,12 @@ Rename the result to something more descriptive
 ✅ 7. Random print statement in performance_reviews.py
 Line 28: print(“hey”)
 I think can delete is there any use for that?
-❌ 8. Conversions in performance_reviews.py
+💛 8. Conversions in performance_reviews.py
 Line 71 and 115
-Don’t think you need to pass the .mappings().all() query results straight into a dict() - redundant
+Don't think you need to pass the .mappings().all() query results straight into a dict() - redundant
 Instead should be able to directly return the list of row dictionaries
+
+**Response**: We appreciate this feedback. We chose to keep the explicit `dict()` conversion for consistency across the codebase, as recommended by other code review comments. This ensures all SQL mappings are uniformly converted to dictionaries before being used or returned, which improves code consistency and predictability.
 ✅ 9. Out of bounds handling in performance_reviews.py
 overall_rating accepts any integer
 Perhaps add a range for it so you don’t get a rating that’s 274 or something

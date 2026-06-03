@@ -45,13 +45,21 @@ class IdResponse(BaseModel):
     id: int
 
 
+class DraftResponse(BaseModel):
+    id: int
+
+
+class SuccessResponse(BaseModel):
+    success: bool
+
+
 router = APIRouter(
     prefix="/performance_reviews",
     tags=["performance_reviews"],
     dependencies=[Depends(auth.get_api_key)],
 )
 
-@router.get("/", response_model=list[PerformanceReviewResponse], status_code=200)
+@router.get("/", response_model=list[PerformanceReviewResponse], status_code=status.HTTP_200_OK)
 def get_performance_reviews(reviewerId: Optional[int] = None, employeeId: Optional[int] = None):
     """Get all performance reviews."""
     if reviewerId is None and employeeId is None:
@@ -131,7 +139,7 @@ def get_performance_review(review_id: int):
         level_change = performance_review.level_change
     )
 
-@router.post("/draft", status_code=201)
+@router.post("/draft", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
 def create_draft(performance_review: PerformanceReviewDraft):
     with db.engine.begin() as connection:
         ensure_resource_exists(
@@ -187,7 +195,7 @@ def create_draft(performance_review: PerformanceReviewDraft):
 
     return IdResponse(id=draft_id)
 
-@router.get("/draft/{draft_id}/", response_model = PerformanceReviewDraft, status_code=200)
+@router.get("/draft/{draft_id}/", response_model=PerformanceReviewDraft, status_code=status.HTTP_200_OK)
 def get_draft(
     draft_id: int
 ):
@@ -227,7 +235,7 @@ def get_draft(
     )
     
 
-@router.patch("/draft/{draft_id}/", status_code=200)
+@router.patch("/draft/{draft_id}/", response_model=SuccessResponse, status_code=status.HTTP_200_OK)
 def update_draft(
     draft_id: int,
     performance_review: PerformanceReviewDraft,
@@ -256,7 +264,7 @@ def update_draft(
     return {"success": True}
 
 
-@router.post("/submit/{draft_id}", status_code=201)
+@router.post("/submit/{draft_id}", response_model=DraftResponse, status_code=status.HTTP_201_CREATED)
 def submit_draft(draft_id: int):
     with db.engine.begin() as connection:
         draft = connection.execute(
