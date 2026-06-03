@@ -412,11 +412,17 @@ def submit_draft(draft_id: int):
             if draft_values.get(field) is None
         ]
         if missing_fields:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUESTdetail=f"Draft is missing required fields: {', '.join(missing_fields)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Draft is missing required fields: {', '.join(missing_fields)}",
+            )
 
         for field in ratings:
             if draft_values[field] < 1 or draft_values[field] > 10:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail=f"{field} must be between 1 and 10")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"{field} must be between 1 and 10",
+                )
 
         validate_review_date_order(
             draft_values["review_period_start"],
